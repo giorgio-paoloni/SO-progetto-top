@@ -1,6 +1,7 @@
 #include "bot.h"
 
 int main(){
-  print_proc();
+  threadify();
+  //print_proc();
   return 0;
 }
