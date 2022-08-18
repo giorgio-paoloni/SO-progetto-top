@@ -1,7 +1,7 @@
 #include "bot.h"
 
 int main(){
-  threadify();
+  TUI_default_interface();
   //print_proc();
   return 0;
 }

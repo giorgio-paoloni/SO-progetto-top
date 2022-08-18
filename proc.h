@@ -9,6 +9,7 @@
 #include <dirent.h> //https://man7.org/linux/man-pages/man3/opendir.3.html, useful for manipulating directory in C
 #include <string.h>
 #include <fcntl.h>
+#include <ncurses.h>
 
 
 // the path "/proc" is used only in gnu-linux OSes, is not portable throught different OSes (ex. windows or BSD or MacOS)
@@ -19,3 +20,4 @@ typedef struct dirent dirent; //used to don't type "struct dirent" everytime, ca
 //DIR* get_proc();
 void print_proc();
 int is_pid(char* name);
+void print_proc2();
