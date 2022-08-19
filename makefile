@@ -1,6 +1,6 @@
-OBJS	= bot.o proc.o TUI.o
-SOURCE	= bot.c proc.c TUI.c
-HEADER	= bot.h proc.h TUI.h
+OBJS	= bot.o proc.o TUI.o process_monitor.o
+SOURCE	= bot.c proc.c TUI.c process_monitor.c
+HEADER	= bot.h proc.h TUI.h process_monitor.h
 OUT	= bot
 CC	 = gcc
 FLAGS	 = -g -c -Wall
@@ -17,6 +17,9 @@ proc.o: proc.c
 
 TUI.o: TUI.c
 	$(CC) $(FLAGS) TUI.c -std=c99
+
+process_monitor.o: process_monitor.c
+	$(CC) $(FLAGS) process_monitor.c -std=c99
 
 clean:
 	rm -f $(OBJS) $(OUT)
