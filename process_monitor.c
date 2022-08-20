@@ -9,3 +9,9 @@ int sleep_PID(int process_pid){
   //TODO
   return -1;
 }
+
+int terminate_PID(int process_pid){
+  if(process_pid <= 1) return -1;
+  return kill(process_pid, SIGTERM);
+  return -1;
+}
