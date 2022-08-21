@@ -23,8 +23,8 @@ void TUI_default_interface(){
   refresh();
 
   WINDOW* window1 = newwin(3, max_x, 0, 0); //info & commands window
-  WINDOW* window2 = newwin(8, max_x, 3, 0); //stats window
-  WINDOW* window3 = newwin(max_y-11, max_x, 11, 0);//process list window
+  WINDOW* window2 = NULL;// newwin(8, max_x, 3, 0); //stats window, alla fine ho deciso di implementarla su un'altra schermata
+  WINDOW* window3 = newwin(max_y-3, max_x, 3, 0);//process list window
   WINDOW* window4 = NULL;
 
   nodelay(stdscr, true);//per non blocking getch, credits. https://gist.github.com/mfcworks/3a32513f26bdc58fd3bd, devo rileggermi bene il man
@@ -34,16 +34,16 @@ void TUI_default_interface(){
 
   //le lascio per controllare se sforo nel terminale, non so se le terro'...
   box(window1, (int) '|', (int) '-');
-  box(window2, (int) '|', (int) '-');
+  //box(window2, (int) '|', (int) '-');
   box(window3, (int) '|', (int) '-');
 
-  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (l)list");
+  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (l)list, (s)stats");
   //mvwprintw(window1, 2, 2, "R = %d C = %d", max_y, max_x);
 
   //scrollok(window3, true);
 
   wrefresh(window1);
-  wrefresh(window2);
+  //wrefresh(window2);
   wrefresh(window3);
 
 
@@ -64,7 +64,18 @@ void TUI_default_interface(){
 
     reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
+    }else if(char_input == (int) 'l' || char_input == (int) 'L'){
+    TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
+
+    reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+
+    }else if(char_input == (int) 's' || char_input == (int) 's'){
+    TUI_stats_interface(window1, window2, window3, window4, max_y, max_x);
+
+    reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+
     }
+
   }
 
   endwin();//ncurses, dealloca le finestre
@@ -79,10 +90,10 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(h)help, (b)back");
+  mvwprintw(window1, 1, 2, "(b)back");
 
-  wclear(window2);
-  wrefresh(window2);
+  //wclear(window2);
+  //wrefresh(window2);
 
   wclear(window3);
   wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
@@ -94,7 +105,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   print_proc2(window3);
 
   wrefresh(window1);
-  wrefresh(window2);
+  //wrefresh(window2);
   wrefresh(window3);
   wrefresh(window4);
 
@@ -117,7 +128,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   while((window_input[i] = (char) getch()) != '\n' && i < 32){
 
-    if(window_input[i] == 'b' || window_input[i] == 'B' || window_input[i] == 'q' || window_input[i] == 'Q'){//l'utente puo' premere b o q in ogni momento e annulla l'inserimento del pid
+    if(window_input[i] == 'b' || window_input[i] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
       window_input[0] = 'b';
       break;
     }
@@ -148,7 +159,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   nodelay(stdscr, true);
 
-  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B' || window_input[0] == 'q' || window_input[0] == 'Q')){
+  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     if(kill_PID(atoi(window_input)) == -1){//err
       mvwprintw(window4, 1, i+8, "non ucciso");
     }else{
@@ -159,7 +170,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     window_input[0] = getch();
   }
 
-  while(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B' || window_input[0] == 'q' || window_input[0] == 'Q')){
+  while(!(window_input[0] == '\n' || window_input[0] == 'b')){
     window_input[0] = getch();
   }
 
@@ -169,11 +180,13 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
 
   wclear(window1);
+  wrefresh(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(h)help, (b)back");
+  mvwprintw(window1, 1, 2, "(b)back");
+  wrefresh(window1);
 
-  wclear(window2);
-  wrefresh(window2);
+  //wclear(window2);
+  //wrefresh(window2);
 
   wclear(window3);
   wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
@@ -186,7 +199,7 @@ void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   int char_input = getch();
 
-  while(!(char_input == (int) 'q' || char_input == (int) 'Q' || char_input == (int) 'b' || char_input == (int) 'B') ){
+  while(!(char_input == (int) 'b' || char_input == (int) 'B') ){
     char_input = getch();
   }
 
@@ -195,26 +208,108 @@ void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 }
 
 void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+
+  wclear(window1);
+  box(window1, (int) '|', (int) '-');
+  mvwprintw(window1, 1, 2, "(b)back");
+  wrefresh(window1);
+
+  wclear(window2);
+  wrefresh(window2);
+
+  mvwin(window3, 3, 0);
+  wresize(window3, max_y-3, max_x);
+  wclear(window3);
+  wrefresh(window3);
+  box(window3, (int) '|', (int) '-');
+  print_proc3(window3, 0);
+  wrefresh(window3);
+
+  nodelay(stdscr, false);
+  keypad(stdscr, true);
+
+  int char_input = getch();
+
+
+  int i = 0;
+
+  while(!(char_input == (int) 'b' || char_input == (int) 'B')){
+
+    //ciclica
+    if (char_input == (int) KEY_UP){
+      if(i > 0) i = (i-1)%max_y;
+      if(i <= 0) i = max_y;
+
+    }else if(char_input == KEY_DOWN){
+      i = (i+1)%max_y;
+    }
+
+    wclear(window3);
+    wrefresh(window3);
+    box(window3, (int) '|', (int) '-');
+
+    print_proc3(window3, i);
+
+    char_input = getch();
+  }
+
+  nodelay(stdscr, true);
+  keypad(stdscr, false);
+
   return;
 }
 
+void TUI_stats_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+
+  wclear(window1);
+  box(window1, (int) '|', (int) '-');
+  mvwprintw(window1, 1, 2, "(b)back");
+
+  //wclear(window2);
+  //wrefresh(window2);
+
+  wclear(window3);
+  wrefresh(window3);
+
+  mvwin(window3, 6, 0);
+  wresize(window3, max_y-6, max_x);
+  box(window3, (int) '|', (int) '-');
+
+  wrefresh(window1);
+  //wrefresh(window2);
+  wrefresh(window3);
+  wrefresh(window4);
+
+  refresh();
+
+  int char_input = getch();
+
+  while(!(char_input == (int) 'b' || char_input == (int) 'B') ){
+    char_input = getch();
+  }
+
+  return;
+}
+
+
 void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
-  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (l)list");
+  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (l)list, (s)stats");
   wrefresh(window1);
 
   wclear(window4);
   wrefresh(window4);
 
-  box(window2, (int) '|', (int) '-');
-  wrefresh(window2);
+  //box(window2, (int) '|', (int) '-');
+  //wrefresh(window2);
 
-  wresize(window3, max_y-11, max_x);
+  wresize(window3, max_y-3, max_x);
   wrefresh(window3);
 
-  mvwin(window3, 11, 0);
+  mvwin(window3, 3, 0);
   wclear(window3);
   wrefresh(window3);
 
   box(window3, (int) '|', (int) '-');
+
 
 }

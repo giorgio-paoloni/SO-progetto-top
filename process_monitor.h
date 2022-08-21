@@ -8,6 +8,7 @@
 
 int kill_PID(int process_pid);
 int sleep_PID(int process_pid);
+int resume_PID(int process_pid);
 int terminate_PID(int process_pid);
 
 
