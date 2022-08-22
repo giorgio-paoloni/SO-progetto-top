@@ -20,3 +20,6 @@ typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent
 void print_proc();
 int is_pid(char* name);
 void print_proc2();
+
+//cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
+//

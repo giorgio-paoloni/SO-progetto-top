@@ -4,7 +4,7 @@
 
 int is_pid(char* name){
   //Sfrutto questo metodo perche' leggendo la documentazione (*), in /proc dir, non ci sono solo cartelle PID
-  //*https://man7.org/linux/man-pages/man5/proc.5.html
+  //*https://man7.org/linux/man-pages/man5/proc.5.html oppure man proc
   int i = 0;
   while(name[i] != '\0'){
     if(!(name[i] >= '0' && name[i] <= '9')) return 0;

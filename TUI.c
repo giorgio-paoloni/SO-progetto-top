@@ -23,9 +23,9 @@ void TUI_default_interface(){
   refresh();
 
   WINDOW* window1 = newwin(3, max_x, 0, 0); //info & commands window
-  WINDOW* window2 = NULL;// newwin(8, max_x, 3, 0); //stats window, alla fine ho deciso di implementarla su un'altra schermata
+  WINDOW* window2 = NULL;// newwin(8, max_x, 3, 0); //stats window, alla fine ho deciso di implementarla su un'altra schermata, rimane perche' altrimenti dovrei shiftare le finestre di -1 e non voglio creare errori.
   WINDOW* window3 = newwin(max_y-3, max_x, 3, 0);//process list window
-  WINDOW* window4 = NULL;
+  WINDOW* window4 = NULL;//finestra input testuale visibile, non sempre utilizzata
 
   nodelay(stdscr, true);//per non blocking getch, credits. https://gist.github.com/mfcworks/3a32513f26bdc58fd3bd, devo rileggermi bene il man
 
@@ -46,37 +46,61 @@ void TUI_default_interface(){
   //wrefresh(window2);
   wrefresh(window3);
 
+  nodelay(stdscr, false);
+  keypad(stdscr, true);
+
+  int i = 2;
+
+  print_proc2(window3);
 
   while(1){
-
-    print_proc2(window3);
 
     //avrei potuto usare switch-case, ma non mi piace
     char_input = getch();
     if(char_input == (int) 'q' || char_input == (int) 'Q') break; //l'utente ha inserito q, cioe' QUIT
+
+
 
     if(char_input == (int) 'h' || char_input == (int) 'H'){//l'utente ha inserito h, cioe' HELP
       TUI_help_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 'k' || char_input == (int) 'K'){//l'utente ha inserito k, cioe' kill
-    TUI_kill_interface(window1, window2, window3, window4, max_y, max_x);
 
-    reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_kill_interface(window1, window2, window3, window4, max_y, max_x);
+      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 'l' || char_input == (int) 'L'){
-    TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
 
-    reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
+      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 's' || char_input == (int) 's'){
-    TUI_stats_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_stats_interface(window1, window2, window3, window4, max_y, max_x);
+      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
-    reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+    }else if (char_input == KEY_UP){
+      if(i > 0) i = (i-1)%max_y;
+      if(i <= 0) i = max_y;
 
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, i);
+
+    }else if(char_input == KEY_DOWN){
+      i = (i+1)%max_y;
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, i);
     }
-
   }
+
+  nodelay(stdscr, true);
+  keypad(stdscr, false);
 
   endwin();//ncurses, dealloca le finestre
   clear();
@@ -85,8 +109,7 @@ void TUI_default_interface(){
 
 void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
 
-  window4 = newwin(3, max_x, 3, 0);
-  box(window4, (int) '|', (int) '-');
+  int q = 2;
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -95,12 +118,24 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   //wclear(window2);
   //wrefresh(window2);
 
+  //printw("test1\n");
+
   wclear(window3);
   wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
 
+  wresize(window3, max_y-6, max_x);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
+  //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
+
   mvwin(window3, 6, 0);
-  wresize(window3, max_y-6, max_x);
+  wrefresh(window3);
+
   box(window3, (int) '|', (int) '-');
+  wrefresh(window3);
+
+  mvwprintw(window3, 1, 2, "test2 in\n");
+
+  window4 = newwin(3, max_x, 3, 0);
+  box(window4, (int) '|', (int) '-');
 
   print_proc2(window3);
 
@@ -111,7 +146,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   refresh();
 
-  char window_input[32];
+  char window_input[32]; //PID lungo  massimo 32 caratteri
 
   for(int j = 0;  j < 32; j++){
     window_input[j] = '\0';
@@ -133,9 +168,11 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
       break;
     }
 
-    if(i>0 && (window_input[i] == KEY_BACKSPACE || window_input[i] == 127 || window_input[i] == 8 || window_input[i] == '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses, per ora non mi rileva il cancellare...
+    if(i>0 && (window_input[i] == (char) KEY_BACKSPACE || window_input[i] == (char) 127 || window_input[i] == (char) 8 || window_input[i] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses, per ora non mi rileva il carattere per cancellare... con altri caratteri sembra funzionare o comunque funziona non perfettamente
 
-      window_input[i-1] = '\0';
+      window_input[i] = '\0'; //evita caratteri sporchi
+      window_input[i-1] = '\0';//cancella il carattere precedente
+
       wclear(window4);
       box(window4, (int) '|', (int) '-');
       wrefresh(window4);
@@ -143,6 +180,27 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
       mvwprintw(window4, 1, 7, window_input);
       wrefresh(window4);
       i--;
+      continue;
+    }
+
+    if (window_input[i] == (char) KEY_UP){ //cast a char importante
+      if(q > 0) q = (q-1)%max_y;
+      if(q <= 0) q = max_y;
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, q);
+      continue;
+
+    }else if(window_input[i] == (char) KEY_DOWN){ //cast a char importante
+      q = (q+1)%max_y;
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, q);
       continue;
     }
 
@@ -170,7 +228,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     window_input[0] = getch();
   }
 
-  while(!(window_input[0] == '\n' || window_input[0] == 'b')){
+  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
     window_input[0] = getch();
   }
 
@@ -226,7 +284,7 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   wrefresh(window3);
 
   nodelay(stdscr, false);
-  keypad(stdscr, true);
+  //keypad(stdscr, true);
 
   int char_input = getch();
 
@@ -236,7 +294,7 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   while(!(char_input == (int) 'b' || char_input == (int) 'B')){
 
     //ciclica
-    if (char_input == (int) KEY_UP){
+    if (char_input == KEY_UP){
       if(i > 0) i = (i-1)%max_y;
       if(i <= 0) i = max_y;
 
@@ -254,7 +312,7 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   }
 
   nodelay(stdscr, true);
-  keypad(stdscr, false);
+  //keypad(stdscr, false);
 
   return;
 }
@@ -311,5 +369,7 @@ void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window
 
   box(window3, (int) '|', (int) '-');
 
+  print_proc2(window3);
+  wrefresh(window3);
 
 }
