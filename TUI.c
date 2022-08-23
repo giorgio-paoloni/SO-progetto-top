@@ -25,7 +25,7 @@ void TUI_default_interface(){
   WINDOW* window1 = newwin(3, max_x, 0, 0); //info & commands window
   WINDOW* window2 = NULL;// newwin(8, max_x, 3, 0); //stats window, alla fine ho deciso di implementarla su un'altra schermata, rimane perche' altrimenti dovrei shiftare le finestre di -1 e non voglio creare errori.
   WINDOW* window3 = newwin(max_y-3, max_x, 3, 0);//process list window
-  WINDOW* window4 = NULL;//finestra input testuale visibile, non sempre utilizzata
+  WINDOW* window4 = newwin(3, max_x, 3, 0);;//finestra input testuale visibile, non sempre utilizzata
 
   nodelay(stdscr, true);//per non blocking getch, credits. https://gist.github.com/mfcworks/3a32513f26bdc58fd3bd, devo rileggermi bene il man
 
@@ -37,10 +37,13 @@ void TUI_default_interface(){
   //box(window2, (int) '|', (int) '-');
   box(window3, (int) '|', (int) '-');
 
-  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (l)list, (s)stats");
+  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (s)stats");
   //mvwprintw(window1, 2, 2, "R = %d C = %d", max_y, max_x);
 
   //scrollok(window3, true);
+
+  wclear(window4);
+  wrefresh(window4);
 
   wrefresh(window1);
   //wrefresh(window2);
@@ -77,6 +80,14 @@ void TUI_default_interface(){
 
     }else if(char_input == (int) 's' || char_input == (int) 's'){
       TUI_stats_interface(window1, window2, window3, window4, max_y, max_x);
+      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+
+    }else if(char_input == (int) 'z' || char_input == (int) 'Z'){
+      TUI_sleep_interface(window1, window2, window3, window4, max_y, max_x);
+      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+
+    }else if(char_input == (int) 'r' || char_input == (int) 'R'){
+      TUI_resume_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if (char_input == KEY_UP){
@@ -134,7 +145,6 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   mvwprintw(window3, 1, 2, "test2 in\n");
 
-  window4 = newwin(3, max_x, 3, 0);
   box(window4, (int) '|', (int) '-');
 
   print_proc2(window3);
@@ -349,9 +359,234 @@ void TUI_stats_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
   return;
 }
 
+void TUI_sleep_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
+  int i = 0, q = 2;
+
+  wclear(window1);
+  box(window1, (int) '|', (int) '-');
+  mvwprintw(window1, 1, 2, "(b)back");
+
+  wclear(window3);
+  wrefresh(window3);
+  wresize(window3, max_y-6, max_x);
+  mvwin(window3, 6, 0);
+  wrefresh(window3);
+  box(window3, (int) '|', (int) '-');
+  wrefresh(window3);
+
+  box(window4, (int) '|', (int) '-');
+
+  print_proc2(window3);
+
+  wrefresh(window1);
+  wrefresh(window3);
+  wrefresh(window4);
+  refresh();
+
+  char window_input[32];
+
+  for(int j = 0;  j < 32; j++){
+    window_input[j] = '\0';
+  }
+
+  mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
+  wrefresh(window4);
+
+  nodelay(stdscr, false);
+
+  while((window_input[i] = (char) getch()) != '\n' && i < 32){
+
+    if(window_input[i] == 'b' || window_input[i] == 'B'){
+      window_input[0] = 'b';
+      break;
+    }
+
+    if(i>0 && (window_input[i] == (char) KEY_BACKSPACE || window_input[i] == (char) 127 || window_input[i] == (char) 8 || window_input[i] == (char) '\b')){
+      window_input[i] = '\0'; //evita caratteri sporchi
+      window_input[i-1] = '\0';//cancella il carattere precedente
+
+      wclear(window4);
+      box(window4, (int) '|', (int) '-');
+      wrefresh(window4);
+      mvwprintw(window4, 1, 2, "PID: ");
+      mvwprintw(window4, 1, 7, window_input);
+      wrefresh(window4);
+      i--;
+      continue;
+    }
+
+    if (window_input[i] == (char) KEY_UP){
+
+      if(q > 0) q = (q-1)%max_y;
+      if(q <= 0) q = max_y;
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, q);
+      continue;
+
+    }else if(window_input[i] == (char) KEY_DOWN){
+
+      q = (q+1)%max_y;
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, q);
+      continue;
+    }
+
+    if(window_input[i] < '0' || window_input[i] > '9') continue;
+
+    wclear(window4);
+    box(window4, (int) '|', (int) '-');
+    wrefresh(window4);
+    mvwprintw(window4, 1, 2, "PID: ");
+    mvwprintw(window4, 1, 7, window_input);
+    wrefresh(window4);
+    i++;
+
+  }
+
+  nodelay(stdscr, true);
+
+  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
+    if(sleep_PID(atoi(window_input)) == -1){//err
+      mvwprintw(window4, 1, i+8, "non addormentato");
+    }else{
+      mvwprintw(window4, 1, i+8, "addormentato");
+    }
+    wrefresh(window4);
+
+    window_input[0] = getch();
+  }
+
+  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
+    window_input[0] = getch();
+  }
+
+  return;
+}
+
+void TUI_resume_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
+  int i = 0, q = 2;
+
+  wclear(window1);
+  box(window1, (int) '|', (int) '-');
+  mvwprintw(window1, 1, 2, "(b)back");
+
+  wclear(window3);
+  wrefresh(window3);
+  wresize(window3, max_y-6, max_x);
+  mvwin(window3, 6, 0);
+  wrefresh(window3);
+  box(window3, (int) '|', (int) '-');
+  wrefresh(window3);
+
+  box(window4, (int) '|', (int) '-');
+
+  print_proc2(window3);
+
+  wrefresh(window1);
+  wrefresh(window3);
+  wrefresh(window4);
+  refresh();
+
+  char window_input[32];
+
+  for(int j = 0;  j < 32; j++){
+    window_input[j] = '\0';
+  }
+
+  mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
+  wrefresh(window4);
+
+  nodelay(stdscr, false);
+
+  while((window_input[i] = (char) getch()) != '\n' && i < 32){
+
+    if(window_input[i] == 'b' || window_input[i] == 'B'){
+      window_input[0] = 'b';
+      break;
+    }
+
+    if(i>0 && (window_input[i] == (char) KEY_BACKSPACE || window_input[i] == (char) 127 || window_input[i] == (char) 8 || window_input[i] == (char) '\b')){
+      window_input[i] = '\0'; //evita caratteri sporchi
+      window_input[i-1] = '\0';//cancella il carattere precedente
+
+      wclear(window4);
+      box(window4, (int) '|', (int) '-');
+      wrefresh(window4);
+      mvwprintw(window4, 1, 2, "PID: ");
+      mvwprintw(window4, 1, 7, window_input);
+      wrefresh(window4);
+      i--;
+      continue;
+    }
+
+    if (window_input[i] == (char) KEY_UP){
+
+      if(q > 0) q = (q-1)%max_y;
+      if(q <= 0) q = max_y;
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, q);
+      continue;
+
+    }else if(window_input[i] == (char) KEY_DOWN){
+
+      q = (q+1)%max_y;
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc3(window3, q);
+      continue;
+    }
+
+    if(window_input[i] < '0' || window_input[i] > '9') continue;
+
+    wclear(window4);
+    box(window4, (int) '|', (int) '-');
+    wrefresh(window4);
+    mvwprintw(window4, 1, 2, "PID: ");
+    mvwprintw(window4, 1, 7, window_input);
+    wrefresh(window4);
+    i++;
+
+  }
+
+  nodelay(stdscr, true);
+
+  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
+    if(resume_PID(atoi(window_input)) == -1){//err
+      mvwprintw(window4, 1, i+8, "non risvegliato");
+    }else{
+      mvwprintw(window4, 1, i+8, "risvegliato");
+    }
+    wrefresh(window4);
+
+    window_input[0] = getch();
+  }
+
+  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
+    window_input[0] = getch();
+  }
+
+  return;
+}
+
+
 
 void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
-  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (l)list, (s)stats");
+  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (s)stats");
   wrefresh(window1);
 
   wclear(window4);

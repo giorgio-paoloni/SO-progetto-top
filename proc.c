@@ -241,4 +241,107 @@ void print_proc3(WINDOW* window, int start_row){//variante 3
   closedir(proc_dir);
 }
 
+void print_proc_advanced(WINDOW* window, int start_row){//variante 3
+
+  DIR* proc_dir;
+
+  dirent* proc_iter;
+  int proc_strlen = strlen(PROC_PATH);
+
+  char* pid_path;
+  char* pid_cmdline;
+
+  FILE* file_cmdline;
+
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+  char* pid_stat;
+
+  int bytes_read;
+  int char_input;
+  if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+
+  int i = 3;
+
+  mvwprintw(window, 1, 2, "| PID | pid_path | cmdline |\n");
+
+  int j = 0;
+
+  while((proc_iter = readdir(proc_dir)) != NULL){
+    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){ //it's a PID directory
+      //navigate nested directory in /PROC
+
+      pid_path = (char*) malloc((proc_strlen + 1 + strlen(proc_iter->d_name)) * sizeof(char));
+      strcpy(pid_path, PROC_PATH);
+      strcat(pid_path, "/");
+      strcat(pid_path, proc_iter->d_name);
+      //strcat(pid_path, "\0");
+
+      pid_cmdline = (char*) malloc((sizeof(pid_path) + 1 + CMD_LINE_LENGHT) * sizeof(char));
+
+      strcpy(pid_cmdline, pid_path);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, "cmdline");
+
+      file_cmdline = fopen(pid_cmdline, "r");
+      if(file_cmdline == NULL) continue;
+
+      fclose(file_cmdline);
+
+      if(strcmp(buffer_cmdline,"\0") == 0) continue;
+
+      strcpy(buffer_cmdline+strlen(buffer_cmdline), "\0");
+      //if(i >10) continue;
+      if(j >= start_row){
+
+        mvwprintw(window, i, 2, "%s  %s  %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
+
+        pid_stat = (char*) malloc((proc_strlen + 1 + strlen("stat")) * sizeof(char));
+        strcpy(pid_stat, pid_path);
+        strcat(pid_stat, "/");
+        strcat(pid_stat, "stat");
+
+        //print_PID_stats(window, y, path);
+
+        free(pid_stat);
+        i++;
+        wrefresh(window);
+
+      }
+
+      strcpy(buffer_cmdline, "\0");
+
+      free(pid_path);
+
+      j++;
+    }
+  }
+
+  closedir(proc_dir);
+}
+
+void print_PID_stats(WINDOW* window, int y, char* path){
+  #define BUFFER_STAT_LENGHT 128
+  FILE* file_stat;
+  char* buffer_stat = (char*) malloc(BUFFER_STAT_LENGHT*sizeof(char));
+  file_stat = fopen(path, "r");
+  if(file_stat == NULL){//err
+    fclose(file_stat);
+    free(buffer_stat);
+    return;
+  }
+  if(!strcmp(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat),"s")){//err, s = success
+    fclose(file_stat);
+    free(buffer_stat);
+    return;
+  }
+  //TODO
+  /*while(strtok()){//strtok
+
+  }*/
+  fclose(file_stat);
+  free(buffer_stat);
+  return;
+}
+
+
 //"fortunatamente" non essendo un programma che deve girare su un sistema con poca ram posso permettermi questi sprechi di memoria.
