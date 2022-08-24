@@ -13,7 +13,10 @@
 
 //il percorso "/proc" e' usato solamente in OS Gnu-Linux, non e' portabile attraverso differenti OS come windows ecc.. quindi lo dichiaro qua in modo da poter cambiare agilmente il percorso di proc, se presente
 #define PROC_PATH "/proc"
+#define PROC_UPTIME_PATH "/proc/uptime"
 #define BUFFER_CMDLINE_LENGHT 256
+#define SEPARATOR1 " \t\n"
+#define MAX_TOKEN1 23
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 
@@ -23,5 +26,6 @@ int is_pid(char* name);
 void print_proc2(WINDOW* window);
 void print_proc3(WINDOW* window, int start_row);
 void print_proc_advanced(WINDOW* window, int start_row);
+long unsigned int get_system_uptime();
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/

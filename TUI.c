@@ -316,7 +316,8 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     wrefresh(window3);
     box(window3, (int) '|', (int) '-');
 
-    print_proc3(window3, i);
+    //print_proc3(window3, i);
+    print_proc_advanced(window3, i);
 
     char_input = getch();
   }
@@ -521,7 +522,7 @@ void TUI_resume_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW
       box(window4, (int) '|', (int) '-');
       wrefresh(window4);
       mvwprintw(window4, 1, 2, "PID: ");
-      mvwprintw(window4, 1, 7, window_input);
+      mvwprintw(window4, 1, 7, "%s", window_input);
       wrefresh(window4);
       i--;
       continue;
