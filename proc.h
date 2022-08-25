@@ -17,6 +17,7 @@
 #define BUFFER_CMDLINE_LENGHT 256
 #define SEPARATOR1 " \t\n"
 #define MAX_TOKEN1 23
+#define BUFFER_STAT_LENGHT 256
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 

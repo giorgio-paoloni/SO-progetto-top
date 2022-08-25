@@ -90,12 +90,11 @@ int is_pid(char* name){
   //}
 
   //endwin();//ncurses
-}*/ //print LEGACY
+}*/ //print LEGACY, prototipo su cui si basano le varie versioni
 
 void print_proc2(WINDOW* window){ //variante 2 usata in certe funzioni
 
   DIR* proc_dir;
-
   dirent* proc_iter;
   int proc_strlen = strlen(PROC_PATH);
 
@@ -103,11 +102,10 @@ void print_proc2(WINDOW* window){ //variante 2 usata in certe funzioni
   char* pid_cmdline;
 
   FILE* file_cmdline;
-  #define BUFFER_CMDLINE_LENGHT 256
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
   int bytes_read;
-  int char_input;
+  //int char_input;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
 
   int i = 3;
@@ -131,32 +129,22 @@ void print_proc2(WINDOW* window){ //variante 2 usata in certe funzioni
       strcat(pid_cmdline, "cmdline");
 
       file_cmdline = fopen(pid_cmdline, "r");
-      if(file_cmdline == NULL){
-        //printf("err\n");
-        continue;
-      }
+      if(file_cmdline == NULL) continue; //err
 
       bytes_read = fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
-      //buffer_cmdline[bytes_read] = (char) "\0";
-      //printf("bytes r: %d ", bytes_read);
 
       fclose(file_cmdline);
 
       if(strcmp(buffer_cmdline,"\0") == 0) continue;
 
-      //printf("PID: %s, pid_path: %s, cmdline: %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
-
       strcpy(buffer_cmdline+strlen(buffer_cmdline), "\0");
-      //if(i >10) continue;
-      /*mvwprintw(window, i, 2, "PID: %s, pid_path: %s, cmdline: %s\n", proc_iter->d_name, pid_path, buffer_cmdline);*/
 
       mvwprintw(window, i, 2, "%s  %s  %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
+      wrefresh(window);
 
       i++;
 
-      wrefresh(window);
-
-      strcpy(buffer_cmdline, "\0");
+      memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT); //strcpy(buffer_cmdline, "\0");
 
       free(pid_path);
     }
@@ -176,22 +164,19 @@ void print_proc3(WINDOW* window, int start_row){//variante 3
   char* pid_cmdline;
 
   FILE* file_cmdline;
-  #define BUFFER_CMDLINE_LENGHT 256
+
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
   int bytes_read;
-  int char_input;
+
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
 
-  int i = 3;
+  int i = 3, j = 0;
 
   mvwprintw(window, 1, 2, "| PID | pid_path | cmdline |\n");
 
-  int j = 0;
-
   while((proc_iter = readdir(proc_dir)) != NULL){
-    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){ //it's a PID directory
-      //navigate nested directory in /PROC
+    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
       pid_path = (char*) malloc((proc_strlen + 1 + strlen(proc_iter->d_name)) * sizeof(char));
       strcpy(pid_path, PROC_PATH);
@@ -206,23 +191,17 @@ void print_proc3(WINDOW* window, int start_row){//variante 3
       strcat(pid_cmdline, "cmdline");
 
       file_cmdline = fopen(pid_cmdline, "r");
-      if(file_cmdline == NULL){
-        printf("err\n");
-        continue;
-      }
+
+      if(file_cmdline == NULL) continue; //err
 
       bytes_read = fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
-      //buffer_cmdline[bytes_read] = (char) "\0";
-      //printf("bytes r: %d ", bytes_read);
 
       fclose(file_cmdline);
 
       if(strcmp(buffer_cmdline,"\0") == 0) continue;
 
-      //printf("PID: %s, pid_path: %s, cmdline: %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
-
       strcpy(buffer_cmdline+strlen(buffer_cmdline), "\0");
-      //if(i >10) continue;
+
       if(j >= start_row){
 
         mvwprintw(window, i, 2, "%s  %s  %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
@@ -230,8 +209,8 @@ void print_proc3(WINDOW* window, int start_row){//variante 3
         wrefresh(window);
       }
 
-      strcpy(buffer_cmdline, "\0");
-
+      //strcpy(buffer_cmdline, "\0");
+      memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
       free(pid_path);
 
       j++;
@@ -256,8 +235,6 @@ void print_proc_advanced(WINDOW* window, int start_row){//variante 3
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
   char* pid_stat;
 
-  int bytes_read;
-  int char_input;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
 
   int i = 3;
@@ -267,8 +244,7 @@ void print_proc_advanced(WINDOW* window, int start_row){//variante 3
   int j = 0;
 
   while((proc_iter = readdir(proc_dir)) != NULL){
-    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){ //it's a PID directory
-      //navigate nested directory in /PROC
+    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
       pid_path = (char*) malloc((proc_strlen + 1 + strlen(proc_iter->d_name)) * sizeof(char));
       strcpy(pid_path, PROC_PATH);
@@ -285,54 +261,46 @@ void print_proc_advanced(WINDOW* window, int start_row){//variante 3
       file_cmdline = fopen(pid_cmdline, "r");
       if(file_cmdline == NULL) continue;
 
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
+
       fclose(file_cmdline);
 
-      //ok
-      //mvwprintw(window, 1, 2,"ok");
-      //wrefresh(window);
-
-      //if(strcmp(buffer_cmdline,"\0") == 0) continue;
+      if(strcmp(buffer_cmdline,"\0") == 0) continue;
 
       strcpy(buffer_cmdline+strlen(buffer_cmdline), "\0");
-      //if(i >10) continue;
+
       if(j >= start_row){
 
         //mvwprintw(window, i, 2, "%s  %s  %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
+        // wrefresh(window);
 
-        pid_stat = (char*) malloc((proc_strlen + 1 + strlen("stat")) * sizeof(char));
+        pid_stat = (char*) malloc((sizeof(pid_path) + 1 + strlen("stat")) * sizeof(char));
         strcpy(pid_stat, pid_path);
         strcat(pid_stat, "/");
         strcat(pid_stat, "stat");
+        /*mvwprintw(window, i, 2, "%s ", pid_stat);
+        wrefresh(window);*/
 
         print_PID_stats(window, i, pid_stat);//il problema e' qui, credo
 
         free(pid_stat);
         i++;
-        wrefresh(window);
 
       }
 
-      strcpy(buffer_cmdline, "\0");
-
+      memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
       free(pid_path);
-
       j++;
     }
   }
-
   closedir(proc_dir);
 }
 
 void print_PID_stats(WINDOW* window, int y, char* path){
 
-  #define BUFFER_STAT_LENGHT 128
-
-
   FILE* file_stat;
   char* buffer_stat = (char*) malloc(BUFFER_STAT_LENGHT*sizeof(char));
   char* token = (char*) malloc(32*sizeof(char));//?
-
-  //const char* separator = " \t\n";
 
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc
 
@@ -341,14 +309,12 @@ void print_PID_stats(WINDOW* window, int y, char* path){
   long unsigned int user_time_clock = 0, user_time_sec = 0;
   long unsigned int superuser_time_clock = 0, superuser_time_sec = 0;
   long long unsigned int start_time_clock = 0, start_time_sec = 0;
-  long unsigned int elapsed_time_sec;
+  long unsigned int elapsed_time_sec = 1;
   double cpu_percentage_used_time_sec;
   char state;
   long int priority = 0;
   int i = 1 ;
 
-  /*mvwprintw(window, 1, 2, "%s\n", path);
-  wrefresh(window);*/
 
   if((file_stat = fopen(path, "r")) == NULL){//err
     fclose(file_stat);
@@ -357,17 +323,13 @@ void print_PID_stats(WINDOW* window, int y, char* path){
     return;
   }
 
-  /*if(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat) == NULL){
+  if(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat) == NULL){
     fclose(file_stat);
     free(buffer_stat);
     free(token);
     return;
-  }*/
-  /*fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat);
-  mvwprintw(window, 1, 2, "%s\n", buffer_stat);
-  wrefresh(window);
-  return;*/
-  /*mvwprintw(window, 1, 2, "ok5");
+  }
+  /*mvwprintw(window, 1, 2, "%s\n", buffer_stat);
   wrefresh(window);
   return;*/
 
@@ -382,7 +344,7 @@ void print_PID_stats(WINDOW* window, int y, char* path){
     //ricordo che sono espressi in Hertz (1/T), quindi devo ottenere la durata di T dal sistema
 
     if(i == 3){ //state  %c
-      state = token;
+      state = token[0];
     }else if(i == 14){//utime  %lu : tempo speso dal processo in user
       user_time_clock = (unsigned) atol(token);
     }else if(i == 15){//stime  %lu : tempo speso dal processo in superuser (kernel)
@@ -397,25 +359,43 @@ void print_PID_stats(WINDOW* window, int y, char* path){
       start_time_clock = (unsigned) atoll(token);
     }
 
-    i++;
     token = strtok(NULL, SEPARATOR1);
+    i++;
   }
+
+  if(frequency == 0) return; //err, divisione per 0
 
   //tempi utili
   user_time_sec = user_time_clock / frequency;
   superuser_time_sec = superuser_time_clock / frequency;
   start_time_sec = start_time_clock / frequency;
   total_time_sec = user_time_sec + superuser_time_sec;
-  system_uptime_sec = get_system_uptime();
-  elapsed_time_sec = system_uptime_sec - start_time_sec;  
-  cpu_percentage_used_time_sec = (total_time_sec*100)/elapsed_time_sec;
 
-  mvwprintw(window, y, 10, "%lu  %lu  %lf\n", user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec);
+  if(total_time_sec == 0){
+    return;//?
+  }
+
+  system_uptime_sec = get_system_uptime();
+  /*mvwprintw(window, 1, 2, "tkn:%lu\n", system_uptime_sec);
+  wrefresh(window);
+  return;*/
+
+  elapsed_time_sec = system_uptime_sec - start_time_sec;
+
+  if(elapsed_time_sec != 0){
+    cpu_percentage_used_time_sec = (total_time_sec*100)/elapsed_time_sec;
+  }else{//il processo e' partito al boot, quindi dividerei per 0
+    cpu_percentage_used_time_sec = 1;
+  }
+
+
+  mvwprintw(window, y, 10, "Tot:%lu Usr:%lu Ker:%lu CPUper:%lu\n", frequency, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec);
   wrefresh(window);
 
   fclose(file_stat);
-  free(buffer_stat);
-  free(token);
+  //devi rileggermi bene la questione strtok ecc, da problemi di memoria...
+  //if(buffer_stat != NULL) free(buffer_stat);
+  //if(token != NULL) free(token);
   return;
 }
 
@@ -435,21 +415,22 @@ long unsigned int get_system_uptime(){
     return 11;
   }
 
-  fgets(buffer, 256,file_proc_uptime);
-  /*if(fgets(buffer, 256,file_proc_uptime) == NULL ){
+
+  if(fgets(buffer, 256,file_proc_uptime) == NULL){
     fclose(file_proc_uptime);
     free(buffer);
     free(token);
     return 11;
-  }*/
+  }
 
   token = strtok(buffer, SEPARATOR1);
 
   fclose(file_proc_uptime);
-  free(buffer);
-  //free(token);
+  //free(buffer); //da problemi
+  long unsigned int ret1 = (unsigned) atol(token);
+  free(token);
 
-  return atol(token);
+  return ret1;
 
 }
 
