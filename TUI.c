@@ -290,7 +290,8 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   wclear(window3);
   wrefresh(window3);
   box(window3, (int) '|', (int) '-');
-  print_proc3(window3, 0);
+  //print_proc3(window3, 0);
+  print_proc_advanced(window3, 0);
   wrefresh(window3);
 
   nodelay(stdscr, false);

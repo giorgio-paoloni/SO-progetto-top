@@ -18,6 +18,7 @@
 #define SEPARATOR1 " \t\n"
 #define MAX_TOKEN1 23
 #define BUFFER_STAT_LENGHT 256
+#define RET_LENGHT 256
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 
@@ -28,5 +29,6 @@ void print_proc2(WINDOW* window);
 void print_proc3(WINDOW* window, int start_row);
 void print_proc_advanced(WINDOW* window, int start_row);
 long unsigned int get_system_uptime();
+char* print_PID_stats(WINDOW* window, int y, char* path);
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/

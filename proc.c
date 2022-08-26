@@ -234,12 +234,16 @@ void print_proc_advanced(WINDOW* window, int start_row){//variante 3
 
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
   char* pid_stat;
+  char* save;
 
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
 
   int i = 3;
+  wclear(window);
+  wrefresh(window);
+  box(window, (int) '|', (int) '-');
 
-  mvwprintw(window, 1, 2, "| PID | pid_path | cmdline |\n");
+  mvwprintw(window, 1, 2, "| PID | command | state | priority | total time | user time | s.user time | CPU% |\n");
 
   int j = 0;
 
@@ -271,21 +275,23 @@ void print_proc_advanced(WINDOW* window, int start_row){//variante 3
 
       if(j >= start_row){
 
-        //mvwprintw(window, i, 2, "%s  %s  %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
-        // wrefresh(window);
-
         pid_stat = (char*) malloc((sizeof(pid_path) + 1 + strlen("stat")) * sizeof(char));
         strcpy(pid_stat, pid_path);
         strcat(pid_stat, "/");
         strcat(pid_stat, "stat");
-        /*mvwprintw(window, i, 2, "%s ", pid_stat);
-        wrefresh(window);*/
 
-        print_PID_stats(window, i, pid_stat);//il problema e' qui, credo
+        /*mvwprintw(window, i, 2, "%s ", pid_stat);
+        wrefresh(window);
+        i++;*/
+        save = print_PID_stats(window, i, pid_stat);
+        //if(save != NULL){
+          mvwprintw(window, i, 2, "%s | %s\n", proc_iter->d_name, save);
+          wrefresh(window);
+          free(save);
+          i++;
+        //}
 
         free(pid_stat);
-        i++;
-
       }
 
       memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
@@ -296,11 +302,15 @@ void print_proc_advanced(WINDOW* window, int start_row){//variante 3
   closedir(proc_dir);
 }
 
-void print_PID_stats(WINDOW* window, int y, char* path){
+char* print_PID_stats(WINDOW* window, int y, char* path){
 
   FILE* file_stat;
   char* buffer_stat = (char*) malloc(BUFFER_STAT_LENGHT*sizeof(char));
-  char* token = (char*) malloc(32*sizeof(char));//?
+  char* token;
+  char* ret = (char*) malloc(RET_LENGHT*sizeof(char));
+  char* command;
+
+  memset(ret,0,RET_LENGHT);
 
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc
 
@@ -310,7 +320,7 @@ void print_PID_stats(WINDOW* window, int y, char* path){
   long unsigned int superuser_time_clock = 0, superuser_time_sec = 0;
   long long unsigned int start_time_clock = 0, start_time_sec = 0;
   long unsigned int elapsed_time_sec = 1;
-  double cpu_percentage_used_time_sec;
+  double cpu_percentage_used_time_sec = 0;
   char state;
   long int priority = 0;
   int i = 1 ;
@@ -319,21 +329,26 @@ void print_PID_stats(WINDOW* window, int y, char* path){
   if((file_stat = fopen(path, "r")) == NULL){//err
     fclose(file_stat);
     free(buffer_stat);
-    free(token);
-    return;
+    return ret;
   }
 
-  if(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat) == NULL){
+  if(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat) == NULL){//err
     fclose(file_stat);
     free(buffer_stat);
-    free(token);
-    return;
+    return ret;
   }
+
   /*mvwprintw(window, 1, 2, "%s\n", buffer_stat);
   wrefresh(window);
   return;*/
 
+  fclose(file_stat);
+  //return buffer_stat;
+  /*strcpy(ret, buffer_stat);
+  return ret;*/
+
   token = strtok(buffer_stat, SEPARATOR1);
+  //return token;
 
   while(token != NULL && i < MAX_TOKEN1){//strtok
     //credits. https://man7.org/linux/man-pages/man5/procfs.5.html
@@ -343,8 +358,20 @@ void print_PID_stats(WINDOW* window, int y, char* path){
     //i campi sono oltre 50, non tutti ci servono
     //ricordo che sono espressi in Hertz (1/T), quindi devo ottenere la durata di T dal sistema
 
-    if(i == 3){ //state  %c
-      state = token[0];
+    if(i == 2){//comm  %s : comando, lo ho gia', pero' voglio la versione corta solo comando
+      command = (char*) malloc((strlen(token)-1)*sizeof(char));
+
+      int p = 1;
+      while(token[p] != ')'){
+        command[p-1] = token[p];
+        p++;
+      }
+      //command[p] = '\0';
+      /*strcpy(ret, command);
+      return ret;*/
+
+    }else if(i == 3){ //state  %c
+      state = (char) token[0];
     }else if(i == 14){//utime  %lu : tempo speso dal processo in user
       user_time_clock = (unsigned) atol(token);
     }else if(i == 15){//stime  %lu : tempo speso dal processo in superuser (kernel)
@@ -357,13 +384,19 @@ void print_PID_stats(WINDOW* window, int y, char* path){
       priority = atol(token);
     }else if(i == 22){//starttime  %llu : tempo di avvio del processo a partire dal boot
       start_time_clock = (unsigned) atoll(token);
+      /*strcpy(ret, token);
+      return ret;*/
     }
+
+    //free(token);
 
     token = strtok(NULL, SEPARATOR1);
     i++;
   }
 
-  if(frequency == 0) return; //err, divisione per 0
+  //lavora su freq == 0 o total time == 0, per ora ho messo 1 di default per evitare divisioni per 0, pero' e' una soluzione ingenua
+
+  if(frequency == 0) frequency = 1; //err, divisione per 0
 
   //tempi utili
   user_time_sec = user_time_clock / frequency;
@@ -371,9 +404,8 @@ void print_PID_stats(WINDOW* window, int y, char* path){
   start_time_sec = start_time_clock / frequency;
   total_time_sec = user_time_sec + superuser_time_sec;
 
-  if(total_time_sec == 0){
-    return;//?
-  }
+  if(total_time_sec == 0) total_time_sec = 1; //err, questo processo non ha tempo?
+
 
   system_uptime_sec = get_system_uptime();
   /*mvwprintw(window, 1, 2, "tkn:%lu\n", system_uptime_sec);
@@ -384,19 +416,23 @@ void print_PID_stats(WINDOW* window, int y, char* path){
 
   if(elapsed_time_sec != 0){
     cpu_percentage_used_time_sec = (total_time_sec*100)/elapsed_time_sec;
-  }else{//il processo e' partito al boot, quindi dividerei per 0
+  }else{//il processo e' partito al boot, quindi dividerei per 0 (floating point ex)
     cpu_percentage_used_time_sec = 1;
   }
 
+  //sprintf(ret, "%s", path);
+  //sprintf(ret, "%s ", command);
 
-  mvwprintw(window, y, 10, "Tot:%lu Usr:%lu Ker:%lu CPUper:%lu\n", frequency, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec);
-  wrefresh(window);
+  /*strcpy(ret, command);
+  return ret;*/
 
-  fclose(file_stat);
-  //devi rileggermi bene la questione strtok ecc, da problemi di memoria...
-  //if(buffer_stat != NULL) free(buffer_stat);
-  //if(token != NULL) free(token);
-  return;
+  sprintf(ret, "%s | %c | %ld | %lu | %lu | %lu | %f", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec );
+
+  /*mvwprintw(window, y, 10, "Tot:%lu Usr:%lu Ker:%lu CPUper:%lu\n", total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec);
+  wrefresh(window);*/
+  free(command);
+  free(buffer_stat);
+  return ret;
 }
 
 long unsigned int get_system_uptime(){
@@ -406,31 +442,26 @@ long unsigned int get_system_uptime(){
   FILE* file_proc_uptime;
   char* buffer = (char*) malloc(256*sizeof(char));
   file_proc_uptime = fopen(PROC_UPTIME_PATH, "r");
-  char* token = (char*) malloc(32*sizeof(char));
+  char* token;
 
   if(file_proc_uptime == NULL){//err
     fclose(file_proc_uptime);
     free(buffer);
-    free(token);
     return 11;
   }
 
-
-  if(fgets(buffer, 256,file_proc_uptime) == NULL){
+  if(fgets(buffer, 256,file_proc_uptime) == NULL){//err
     fclose(file_proc_uptime);
     free(buffer);
-    free(token);
     return 11;
   }
 
   token = strtok(buffer, SEPARATOR1);
 
   fclose(file_proc_uptime);
-  //free(buffer); //da problemi
-  long unsigned int ret1 = (unsigned) atol(token);
-  free(token);
+  free(buffer);
 
-  return ret1;
+  return (unsigned) atol(token);
 
 }
 
