@@ -29,9 +29,6 @@ void TUI_default_interface(){
 
   nodelay(stdscr, true);//per non blocking getch, credits. https://gist.github.com/mfcworks/3a32513f26bdc58fd3bd, devo rileggermi bene il man
 
-  //keypad(window3, TRUE);
-  //scrollok(window3, TRUE);
-
   //le lascio per controllare se sforo nel terminale, non so se le terro'...
   box(window1, (int) '|', (int) '-');
   //box(window2, (int) '|', (int) '-');
@@ -40,21 +37,18 @@ void TUI_default_interface(){
   mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (s)stats");
   //mvwprintw(window1, 2, 2, "R = %d C = %d", max_y, max_x);
 
-  //scrollok(window3, true);
-
   wclear(window4);
   wrefresh(window4);
 
   wrefresh(window1);
-  //wrefresh(window2);
   wrefresh(window3);
 
   nodelay(stdscr, false);
   keypad(stdscr, true);
 
-  int i = 2;
+  int i = 2, w = 0; //w tiene il conto del numero dei processi letti, mentre i tiene conto della riga dove stampare nella finestra
 
-  print_proc2(window3);
+  print_proc(window3, 0, 0);
 
   while(1){
 
@@ -62,51 +56,64 @@ void TUI_default_interface(){
     char_input = getch();
     if(char_input == (int) 'q' || char_input == (int) 'Q') break; //l'utente ha inserito q, cioe' QUIT
 
-
-
     if(char_input == (int) 'h' || char_input == (int) 'H'){//l'utente ha inserito h, cioe' HELP
       TUI_help_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 'k' || char_input == (int) 'K'){//l'utente ha inserito k, cioe' kill
 
-      TUI_kill_interface(window1, window2, window3, window4, max_y, max_x);
+      //TUI_kill_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 'l' || char_input == (int) 'L'){
 
-      TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
+      //TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 's' || char_input == (int) 's'){
-      TUI_stats_interface(window1, window2, window3, window4, max_y, max_x);
+      //TUI_stats_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 'z' || char_input == (int) 'Z'){
-      TUI_sleep_interface(window1, window2, window3, window4, max_y, max_x);
+      //TUI_sleep_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 'r' || char_input == (int) 'R'){
-      TUI_resume_interface(window1, window2, window3, window4, max_y, max_x);
+      //TUI_resume_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if (char_input == KEY_UP){
-      if(i > 0) i = (i-1)%max_y;
-      if(i <= 0) i = max_y;
+
+      if(w > 0){
+        w--;
+      }else{
+        w = current_number_of_processes();
+      }
+
+      if(i > 0){
+        i--;
+      }else{
+        i = max_y;
+      }
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
+      wrefresh(window3);
 
-      print_proc3(window3, i);
+      print_proc(window3, w, i);
 
     }else if(char_input == KEY_DOWN){
+
+      w = (w+1)%current_number_of_processes();
       i = (i+1)%max_y;
+
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
+      wrefresh(window3);
 
-      print_proc3(window3, i);
+      print_proc(window3, w, i);
     }
   }
 
@@ -118,7 +125,7 @@ void TUI_default_interface(){
   return;
 }
 
-void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+/*void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
 
   int q = 2;
 
@@ -243,7 +250,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   }
 
   return;
-}
+}*/
 
 void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
 
@@ -361,7 +368,7 @@ void TUI_stats_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
   return;
 }
 
-void TUI_sleep_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
+/*void TUI_sleep_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
   int i = 0, q = 2;
 
   wclear(window1);
@@ -471,9 +478,9 @@ void TUI_sleep_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW*
   }
 
   return;
-}
+}*/
 
-void TUI_resume_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
+/*void TUI_resume_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
   int i = 0, q = 2;
 
   wclear(window1);
@@ -583,7 +590,7 @@ void TUI_resume_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW
   }
 
   return;
-}
+}*/
 
 
 
@@ -606,7 +613,7 @@ void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window
 
   box(window3, (int) '|', (int) '-');
 
-  print_proc2(window3);
+  print_proc(window3, 0, 0);
   wrefresh(window3);
 
 }
