@@ -1,6 +1,6 @@
 #include "proc.h"
 
-void print_proc(WINDOW* window, int current_index, int start_row){//variante 3
+void print_proc(WINDOW* window, int current_index, int start_row){
 
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
@@ -67,41 +67,34 @@ void print_proc(WINDOW* window, int current_index, int start_row){//variante 3
   closedir(proc_dir);
 }
 
-void print_proc_advanced(WINDOW* window, int start_row){//variante 3
+void print_proc_advanced(WINDOW* window, int current_index, int start_row){
 
   DIR* proc_dir;
-
+  if((proc_dir = opendir(PROC_PATH)) == NULL) return;
   dirent* proc_iter;
-  int proc_strlen = strlen(PROC_PATH);
 
   char* pid_path;
   char* pid_cmdline;
+  char* pid_stat;
 
   FILE* file_cmdline;
-
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
-  char* pid_stat;
-  char* save;
 
-  if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+  int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
 
-  int i = 3;
   wclear(window);
   wrefresh(window);
   box(window, (int) '|', (int) '-');
 
   mvwprintw(window, 1, 2, "| PID | command | state | priority | total time | user time | s.user time | CPU% | \n");
 
-  int j = 0;
-
   while((proc_iter = readdir(proc_dir)) != NULL){
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
-      pid_path = (char*) malloc((proc_strlen + 1 + strlen(proc_iter->d_name)) * sizeof(char));
+      pid_path = (char*) malloc((PROC_PATH_STRLEN + 1 + strlen(proc_iter->d_name)) * sizeof(char));
       strcpy(pid_path, PROC_PATH);
       strcat(pid_path, "/");
       strcat(pid_path, proc_iter->d_name);
-      //strcat(pid_path, "\0");
 
       pid_cmdline = (char*) malloc((sizeof(pid_path) + 1 + CMD_LINE_LENGHT) * sizeof(char));
 
@@ -110,42 +103,47 @@ void print_proc_advanced(WINDOW* window, int start_row){//variante 3
       strcat(pid_cmdline, "cmdline");
 
       file_cmdline = fopen(pid_cmdline, "r");
-      if(file_cmdline == NULL) continue;
+
+      if(file_cmdline == NULL){//err
+        free(pid_path);
+        free(pid_cmdline);
+        continue;
+      }
 
       fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
 
       fclose(file_cmdline);
 
-      if(strcmp(buffer_cmdline,"\0") == 0) continue;
+      if(strcmp(buffer_cmdline,"\0") == 0){
+        free(pid_path);
+        free(pid_cmdline);
+        continue;
+      }
 
       strcpy(buffer_cmdline+strlen(buffer_cmdline), "\0");
 
-      if(j >= start_row){
+      if(j >= current_index){
 
         pid_stat = (char*) malloc((sizeof(pid_path) + 1 + strlen("stat")) * sizeof(char));
         strcpy(pid_stat, pid_path);
         strcat(pid_stat, "/");
         strcat(pid_stat, "stat");
 
-        /*mvwprintw(window, i, 2, "%s ", pid_stat);
+        mvwprintw(window, i, 2, "%s | %s\n", proc_iter->d_name, print_PID_stats(pid_stat));
         wrefresh(window);
-        i++;*/
-        save = print_PID_stats(pid_stat);
-        //if(save != NULL){
-          mvwprintw(window, i, 2, "%s | %s\n", proc_iter->d_name, save);
-          wrefresh(window);
-          free(save);
-          i++;
-        //}
 
         free(pid_stat);
+        i++;
       }
 
       memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
       free(pid_path);
+      free(pid_cmdline);
+
       j++;
     }
   }
+
   closedir(proc_dir);
 }
 
@@ -185,17 +183,9 @@ char* print_PID_stats(char* path){
     return ret;
   }
 
-  /*mvwprintw(window, 1, 2, "%s\n", buffer_stat);
-  wrefresh(window);
-  return;*/
-
   fclose(file_stat);
-  //return buffer_stat;
-  /*strcpy(ret, buffer_stat);
-  return ret;*/
 
   token = strtok(buffer_stat, SEPARATOR1);
-  //return token;
 
   while(token != NULL && i < MAX_TOKEN1){//strtok
     //credits. https://man7.org/linux/man-pages/man5/procfs.5.html
@@ -206,16 +196,20 @@ char* print_PID_stats(char* path){
     //ricordo che sono espressi in Hertz (1/T), quindi devo ottenere la durata di T dal sistema
 
     if(i == 2){//comm  %s : comando, lo ho gia', pero' voglio la versione corta solo comando
-      command = (char*) malloc((strlen(token)-1)*sizeof(char));
+    //da sistemare
+      if(token[0] == '('){ //tipo (cmd)
 
-      int p = 1;
-      while(token[p] != ')'){
-        command[p-1] = token[p];
-        p++;
+        int p = 1;
+        command = (char*) malloc((strlen(token)-2)*sizeof(char));
+        while(token[p] != ')'){
+          command[p-1] = token[p];
+          p++;
+        }
+        command[p] = (char) 0;
+      }else{//tipo ./cmd
+        command = (char*) malloc((strlen(token))*sizeof(char));
+        strcpy(command, token);
       }
-      //command[p] = '\0';
-      /*strcpy(ret, command);
-      return ret;*/
 
     }else if(i == 3){ //state  %c
       state = (char) token[0];

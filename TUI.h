@@ -17,5 +17,6 @@ void TUI_resume_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW
 //utili
 void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x);
 
+#define WINDOW_INPUT_LENGHT 32
 
 #define HELP_PRINT "Questo programma e' stato scritto da Giorgio Paoloni 1883570, replica di Top, non a caso si chiama Bot. \nOgni schermata di puo' scorrere con le frecce su e giu' I comandi implementati sono: \n 1)kill per uccidere un processo tramite PID\n2)sleep per addormentare un processo tramite PID \n3)resume per risvegliare un processo tramite PID \n2)list per ottenere una list completa e avanzata di tutti i processi \n3)stats info cumulative dei PID\n "

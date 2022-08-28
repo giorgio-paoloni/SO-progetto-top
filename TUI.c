@@ -62,12 +62,12 @@ void TUI_default_interface(){
 
     }else if(char_input == (int) 'k' || char_input == (int) 'K'){//l'utente ha inserito k, cioe' kill
 
-      //TUI_kill_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_kill_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 'l' || char_input == (int) 'L'){
 
-      //TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
       reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
 
     }else if(char_input == (int) 's' || char_input == (int) 's'){
@@ -125,18 +125,11 @@ void TUI_default_interface(){
   return;
 }
 
-/*void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
-
-  int q = 2;
+void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
   mvwprintw(window1, 1, 2, "(b)back");
-
-  //wclear(window2);
-  //wrefresh(window2);
-
-  //printw("test1\n");
 
   wclear(window3);
   wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
@@ -154,22 +147,22 @@ void TUI_default_interface(){
 
   box(window4, (int) '|', (int) '-');
 
-  print_proc2(window3);
+  print_proc(window3, 0, 0);
 
   wrefresh(window1);
-  //wrefresh(window2);
   wrefresh(window3);
   wrefresh(window4);
 
   refresh();
 
-  char window_input[32]; //PID lungo  massimo 32 caratteri
+  char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
 
-  for(int j = 0;  j < 32; j++){
-    window_input[j] = '\0';
-  }
+  int  i = 0, j = 0, w = 0;
+  //i = indica la riga della finestra ncurses dove stampare
+  //j = indica le celle occupate dell'array window_input
+  //w = indica il processo da cui iniziare a stampare
 
-  int  i = 0;
+  memset(window_input,0,WINDOW_INPUT_LENGHT);
 
   mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
   wrefresh(window4);
@@ -178,17 +171,17 @@ void TUI_default_interface(){
 
   nodelay(stdscr, false);
 
-  while((window_input[i] = (char) getch()) != '\n' && i < 32){
+  while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
-    if(window_input[i] == 'b' || window_input[i] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
+    if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
       window_input[0] = 'b';
       break;
     }
 
-    if(i>0 && (window_input[i] == (char) KEY_BACKSPACE || window_input[i] == (char) 127 || window_input[i] == (char) 8 || window_input[i] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses, per ora non mi rileva il carattere per cancellare... con altri caratteri sembra funzionare o comunque funziona non perfettamente
+    if(j>0 && (window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
 
-      window_input[i] = '\0'; //evita caratteri sporchi
-      window_input[i-1] = '\0';//cancella il carattere precedente
+      window_input[j] = '\0'; //evita caratteri sporchi
+      window_input[j-1] = '\0';//cancella il carattere precedente
 
       wclear(window4);
       box(window4, (int) '|', (int) '-');
@@ -196,32 +189,44 @@ void TUI_default_interface(){
       mvwprintw(window4, 1, 2, "PID: ");
       mvwprintw(window4, 1, 7, window_input);
       wrefresh(window4);
-      i--;
+      j--;
       continue;
     }
 
-    if (window_input[i] == (char) KEY_UP){ //cast a char importante
-      if(q > 0) q = (q-1)%max_y;
-      if(q <= 0) q = max_y;
+    if (window_input[j] == (char) KEY_UP){ //cast a char importante
+
+      if(w > 0){
+        w--;
+      }else{
+        w = current_number_of_processes();
+      }
+
+      if(i > 0){
+        i--;
+      }else{
+        i = max_y;
+      }
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+      print_proc(window3, w, i);
+      continue;
+
+    }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
+
+      w = (w+1)%current_number_of_processes();
+      i = (i+1)%max_y;
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
 
-      print_proc3(window3, q);
-      continue;
-
-    }else if(window_input[i] == (char) KEY_DOWN){ //cast a char importante
-      q = (q+1)%max_y;
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc3(window3, q);
+      print_proc(window3, w, i);
       continue;
     }
 
-    if(window_input[i] < '0' || window_input[i] > '9') continue; //controllo PID, e' SOLO numerico
+    if(window_input[j] < '0' || window_input[j] > '9') continue; //controllo PID, e' SOLO numerico
 
     wclear(window4);
     box(window4, (int) '|', (int) '-');
@@ -229,16 +234,16 @@ void TUI_default_interface(){
     mvwprintw(window4, 1, 2, "PID: ");
     mvwprintw(window4, 1, 7, window_input);
     wrefresh(window4);
-    i++;
+    j++;
   }
 
   nodelay(stdscr, true);
 
   if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     if(kill_PID(atoi(window_input)) == -1){//err
-      mvwprintw(window4, 1, i+8, "non ucciso");
+      mvwprintw(window4, 1, j+8, "non ucciso");
     }else{
-      mvwprintw(window4, 1, i+8, "ucciso");
+      mvwprintw(window4, 1, j+8, "ucciso");
     }
     wrefresh(window4);
 
@@ -248,9 +253,8 @@ void TUI_default_interface(){
   while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
     window_input[0] = getch();
   }
-
   return;
-}*/
+}
 
 void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
 
@@ -259,9 +263,6 @@ void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   box(window1, (int) '|', (int) '-');
   mvwprintw(window1, 1, 2, "(b)back");
   wrefresh(window1);
-
-  //wclear(window2);
-  //wrefresh(window2);
 
   wclear(window3);
   wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
@@ -297,8 +298,8 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   wclear(window3);
   wrefresh(window3);
   box(window3, (int) '|', (int) '-');
-  //print_proc3(window3, 0);
-  print_proc_advanced(window3, 0);
+
+  print_proc_advanced(window3, 0, 0);
   wrefresh(window3);
 
   nodelay(stdscr, false);
@@ -306,18 +307,30 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   int char_input = getch();
 
-
-  int i = 0;
+  int i = 0, w = 0;
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B')){
 
     //ciclica
     if (char_input == KEY_UP){
-      if(i > 0) i = (i-1)%max_y;
-      if(i <= 0) i = max_y;
+
+      if(w > 0){
+        w--;
+      }else{
+        w = current_number_of_processes();
+      }
+
+      if(i > 0){
+        i--;
+      }else{
+        i = max_y;
+      }
 
     }else if(char_input == KEY_DOWN){
+
+      w = (w+1)%current_number_of_processes();
       i = (i+1)%max_y;
+
     }
 
     wclear(window3);
@@ -325,7 +338,7 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     box(window3, (int) '|', (int) '-');
 
     //print_proc3(window3, i);
-    print_proc_advanced(window3, i);
+    print_proc_advanced(window3, w, i);
 
     char_input = getch();
   }
@@ -367,232 +380,6 @@ void TUI_stats_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
 
   return;
 }
-
-/*void TUI_sleep_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
-  int i = 0, q = 2;
-
-  wclear(window1);
-  box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
-
-  wclear(window3);
-  wrefresh(window3);
-  wresize(window3, max_y-6, max_x);
-  mvwin(window3, 6, 0);
-  wrefresh(window3);
-  box(window3, (int) '|', (int) '-');
-  wrefresh(window3);
-
-  box(window4, (int) '|', (int) '-');
-
-  print_proc2(window3);
-
-  wrefresh(window1);
-  wrefresh(window3);
-  wrefresh(window4);
-  refresh();
-
-  char window_input[32];
-
-  for(int j = 0;  j < 32; j++){
-    window_input[j] = '\0';
-  }
-
-  mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
-  wrefresh(window4);
-
-  nodelay(stdscr, false);
-
-  while((window_input[i] = (char) getch()) != '\n' && i < 32){
-
-    if(window_input[i] == 'b' || window_input[i] == 'B'){
-      window_input[0] = 'b';
-      break;
-    }
-
-    if(i>0 && (window_input[i] == (char) KEY_BACKSPACE || window_input[i] == (char) 127 || window_input[i] == (char) 8 || window_input[i] == (char) '\b')){
-      window_input[i] = '\0'; //evita caratteri sporchi
-      window_input[i-1] = '\0';//cancella il carattere precedente
-
-      wclear(window4);
-      box(window4, (int) '|', (int) '-');
-      wrefresh(window4);
-      mvwprintw(window4, 1, 2, "PID: ");
-      mvwprintw(window4, 1, 7, window_input);
-      wrefresh(window4);
-      i--;
-      continue;
-    }
-
-    if (window_input[i] == (char) KEY_UP){
-
-      if(q > 0) q = (q-1)%max_y;
-      if(q <= 0) q = max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc3(window3, q);
-      continue;
-
-    }else if(window_input[i] == (char) KEY_DOWN){
-
-      q = (q+1)%max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc3(window3, q);
-      continue;
-    }
-
-    if(window_input[i] < '0' || window_input[i] > '9') continue;
-
-    wclear(window4);
-    box(window4, (int) '|', (int) '-');
-    wrefresh(window4);
-    mvwprintw(window4, 1, 2, "PID: ");
-    mvwprintw(window4, 1, 7, window_input);
-    wrefresh(window4);
-    i++;
-
-  }
-
-  nodelay(stdscr, true);
-
-  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
-    if(sleep_PID(atoi(window_input)) == -1){//err
-      mvwprintw(window4, 1, i+8, "non addormentato");
-    }else{
-      mvwprintw(window4, 1, i+8, "addormentato");
-    }
-    wrefresh(window4);
-
-    window_input[0] = getch();
-  }
-
-  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
-    window_input[0] = getch();
-  }
-
-  return;
-}*/
-
-/*void TUI_resume_interface(WINDOW* window1,WINDOW* window2,WINDOW* window3,WINDOW* window4,int max_y, int max_x){//e' praticamente come TUI_kill_interface
-  int i = 0, q = 2;
-
-  wclear(window1);
-  box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
-
-  wclear(window3);
-  wrefresh(window3);
-  wresize(window3, max_y-6, max_x);
-  mvwin(window3, 6, 0);
-  wrefresh(window3);
-  box(window3, (int) '|', (int) '-');
-  wrefresh(window3);
-
-  box(window4, (int) '|', (int) '-');
-
-  print_proc2(window3);
-
-  wrefresh(window1);
-  wrefresh(window3);
-  wrefresh(window4);
-  refresh();
-
-  char window_input[32];
-
-  for(int j = 0;  j < 32; j++){
-    window_input[j] = '\0';
-  }
-
-  mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
-  wrefresh(window4);
-
-  nodelay(stdscr, false);
-
-  while((window_input[i] = (char) getch()) != '\n' && i < 32){
-
-    if(window_input[i] == 'b' || window_input[i] == 'B'){
-      window_input[0] = 'b';
-      break;
-    }
-
-    if(i>0 && (window_input[i] == (char) KEY_BACKSPACE || window_input[i] == (char) 127 || window_input[i] == (char) 8 || window_input[i] == (char) '\b')){
-      window_input[i] = '\0'; //evita caratteri sporchi
-      window_input[i-1] = '\0';//cancella il carattere precedente
-
-      wclear(window4);
-      box(window4, (int) '|', (int) '-');
-      wrefresh(window4);
-      mvwprintw(window4, 1, 2, "PID: ");
-      mvwprintw(window4, 1, 7, "%s", window_input);
-      wrefresh(window4);
-      i--;
-      continue;
-    }
-
-    if (window_input[i] == (char) KEY_UP){
-
-      if(q > 0) q = (q-1)%max_y;
-      if(q <= 0) q = max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc3(window3, q);
-      continue;
-
-    }else if(window_input[i] == (char) KEY_DOWN){
-
-      q = (q+1)%max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc3(window3, q);
-      continue;
-    }
-
-    if(window_input[i] < '0' || window_input[i] > '9') continue;
-
-    wclear(window4);
-    box(window4, (int) '|', (int) '-');
-    wrefresh(window4);
-    mvwprintw(window4, 1, 2, "PID: ");
-    mvwprintw(window4, 1, 7, window_input);
-    wrefresh(window4);
-    i++;
-
-  }
-
-  nodelay(stdscr, true);
-
-  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
-    if(resume_PID(atoi(window_input)) == -1){//err
-      mvwprintw(window4, 1, i+8, "non risvegliato");
-    }else{
-      mvwprintw(window4, 1, i+8, "risvegliato");
-    }
-    wrefresh(window4);
-
-    window_input[0] = getch();
-  }
-
-  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
-    window_input[0] = getch();
-  }
-
-  return;
-}*/
-
-
 
 void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
   mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (s)stats");
