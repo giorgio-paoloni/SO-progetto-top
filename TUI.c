@@ -2,6 +2,12 @@
 
 void TUI_default_interface(){
 
+  //gestione segnali timer, server per il refresh della schermata automatico ogni tot secondi, TBD...
+  struct sigaction signal_handler_struct, signal_handler_struct_old;
+  memset(&signal_handler_struct, 0, sizeof(struct sigaction));
+  memset(&signal_handler_struct_old, 0, sizeof(struct sigaction));
+  
+
   //clear();
   int char_input;
 
@@ -190,9 +196,27 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
 
-  nodelay(stdscr, false);
+  //nodelay(stdscr, false); //DISABILITATA TEMPORANEAMENTE, CONTROLLA
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
+
+    if(is_term_resized(max_y, max_x)){
+      resize_term_custom(window1, window2, window3, window4, max_y, max_x, KILL_IF);
+
+      if(j == 0){
+        mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
+      }else{
+        window_input[j] = '\0'; //evita caratteri sporchi
+        mvwprintw(window4, 1, 2, "PID: ");
+        mvwprintw(window4, 1, 7, window_input);
+      }
+      wrefresh(window4);
+
+      print_proc(window3, w, i);
+
+      getmaxyx(stdscr, max_y, max_x);
+      continue;
+    }
 
     if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
       window_input[0] = 'b';
@@ -258,7 +282,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     j++;
   }
 
-  nodelay(stdscr, true);
+  //nodelay(stdscr, true);
 
   if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     if(kill_PID(atoi(window_input)) == -1){//err
@@ -321,9 +345,27 @@ void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
 
   //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
 
-  nodelay(stdscr, false);
+  //nodelay(stdscr, false);
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
+
+    if(is_term_resized(max_y, max_x)){
+      resize_term_custom(window1, window2, window3, window4, max_y, max_x, SLEEP_IF);
+
+      if(j == 0){
+        mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
+      }else{
+        window_input[j] = '\0'; //evita caratteri sporchi
+        mvwprintw(window4, 1, 2, "PID: ");
+        mvwprintw(window4, 1, 7, window_input);
+      }
+      wrefresh(window4);
+
+      print_proc(window3, w, i);
+
+      getmaxyx(stdscr, max_y, max_x);
+      continue;
+    }
 
     if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
       window_input[0] = 'b';
@@ -389,7 +431,7 @@ void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
     j++;
   }
 
-  nodelay(stdscr, true);
+  //nodelay(stdscr, true);
 
   if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     if(sleep_PID(atoi(window_input)) == -1){//err
@@ -452,9 +494,27 @@ void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIN
 
   //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
 
-  nodelay(stdscr, false);
+  //nodelay(stdscr, false);
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
+
+    if(is_term_resized(max_y, max_x)){
+      resize_term_custom(window1, window2, window3, window4, max_y, max_x, RESUME_IF);
+
+      if(j == 0){
+        mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
+      }else{
+        window_input[j] = '\0'; //evita caratteri sporchi
+        mvwprintw(window4, 1, 2, "PID: ");
+        mvwprintw(window4, 1, 7, window_input);
+      }
+      wrefresh(window4);
+
+      print_proc(window3, w, i);
+
+      getmaxyx(stdscr, max_y, max_x);
+      continue;
+    }
 
     if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
       window_input[0] = 'b';
@@ -520,7 +580,7 @@ void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIN
     j++;
   }
 
-  nodelay(stdscr, true);
+  //nodelay(stdscr, true);
 
   if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     if(resume_PID(atoi(window_input)) == -1){//err
@@ -593,6 +653,12 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   int i = 0, w = 0;
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B')){
+
+    if(is_term_resized(max_y, max_x)){
+      resize_term_custom(window1, window2, window3, window4, max_y, max_x, LIST_IF);
+      print_proc(window3, w, i);
+      getmaxyx(stdscr, max_y, max_x);
+    }
 
     //ciclica
     if (char_input == KEY_UP){
@@ -827,7 +893,6 @@ void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window
 
 void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int old_max_y, int old_max_x, int calling_interface){ //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
   //NB:NON FUNZIONA BENE CON RIMENSIONAMENTI DEGENERI, ES: 2x2px, la finestra deve essere un minimo grande per rappresentare le info
-
   //dimensioni finestre
   /*
   WINDOW* window1 = newwin(3, max_x, 0, 0); //info & commands window
@@ -838,73 +903,67 @@ void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   //per ora ci sono dei glitch grafici, non capisco...
   int new_max_y, new_max_x;
+  getmaxyx(stdscr, new_max_y, new_max_x);
 
-  if(calling_interface == DEFAULT_IF){
-    
-    getmaxyx(stdscr, new_max_y, new_max_x);
-    
-    wclear(window1);
+  wclear(window1);
+  //wclear(window2);
+  wclear(window3);
+  wclear(window4);
+
+  wrefresh(window1);
+  //wrefresh(window2);
+  wrefresh(window3);
+  wrefresh(window4);
+
+  if(calling_interface == DEFAULT_IF || calling_interface == LIST_IF){
     wresize(window1, 3, new_max_x);
+    mvwin(window1, 0, 0);
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
-    mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
-    //mvwprintw(window1, 1, 2, "RESIZED");
+    if(calling_interface == DEFAULT_IF){
+      mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
+    }else{
+      mvwprintw(window1, 1, 2, "(b)back");
+    }
+
+    //mvwprintw(window1, 1, 2, "RESIZED"); //TEST
     wrefresh(window1);
 
-    wclear(window3);
-    wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-    wresize(window3, new_max_y-3, new_max_x-1);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
-    //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
+    wresize(window3, new_max_y-3, new_max_x);
     mvwin(window3, 3, 0);
-    //wrefresh(window3);
+    wrefresh(window3);
     box(window3, (int) '|', (int) '-');
     wrefresh(window3);
 
-    /*wclear(window4);
-    wresize(window4, 3, new_max_x);
-    wrefresh(window4);
-    box(window4, (int) '|', (int) '-');
-    //mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
-    wrefresh(window4);*/
-
-    //print_proc(window3, 0, 0);
-
-    //wrefresh(window1);
-    //wrefresh(window3);
-    //wrefresh(window4);
-  }else{
-    getmaxyx(stdscr, new_max_y, new_max_x);
-    wclear(window1);
+  }else if(calling_interface == KILL_IF || calling_interface == SLEEP_IF || calling_interface == RESUME_IF ){
     wresize(window1, 3, new_max_x);
+    mvwin(window1, 0, 0);
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
-    mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
-    //mvwprintw(window1, 1, 2, "RESIZED");
+    mvwprintw(window1, 1, 2, "(b)back");
     wrefresh(window1);
 
-    wclear(window3);
-    wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-    wresize(window3, new_max_y-3, new_max_x-1);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
-    //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
-    mvwin(window3, 3, 0);
-    //wrefresh(window3);
+    wresize(window3, new_max_y-6, new_max_x);
+    mvwin(window3, 6, 0);
+    wrefresh(window3);
     box(window3, (int) '|', (int) '-');
     wrefresh(window3);
 
-    /*wclear(window4);
     wresize(window4, 3, new_max_x);
+    mvwin(window4, 3, 0);
     wrefresh(window4);
     box(window4, (int) '|', (int) '-');
-    //mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
-    wrefresh(window4);*/
+    //mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
+    wrefresh(window4);
+  }else if(calling_interface == LIST_IF){
 
-    //print_proc(window3, 0, 0);
-
-    //wrefresh(window1);
-    //wrefresh(window3);
-    //wrefresh(window4);
-  }
+  }//etc...
 
   refresh();
   
+}
+
+
+void signal_handler(int sig){
+  return;
 }
