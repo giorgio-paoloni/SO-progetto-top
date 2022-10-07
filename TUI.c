@@ -1,12 +1,24 @@
 #include "TUI.h"
 
-void TUI_default_interface(){
+WINDOWS_t* windows_ptr;// = (WINDOWS_t*) malloc(sizeof(WINDOWS_t));
 
+int global_w, global_i;//problemi tecnici...
+//w tiene il conto del numero dei processi letti, mentre i tiene conto della riga dove stampare nella finestra
+
+
+//int value1 = 0;
+
+void TUI_default_interface(){
   //gestione segnali timer, server per il refresh della schermata automatico ogni tot secondi, TBD...
   struct sigaction signal_handler_struct, signal_handler_struct_old;
   memset(&signal_handler_struct, 0, sizeof(struct sigaction));
   memset(&signal_handler_struct_old, 0, sizeof(struct sigaction));
   
+  signal_handler_struct.sa_handler = &signal_handler;
+  signal_handler_struct.sa_flags = 0;
+  sigemptyset(&signal_handler_struct.sa_mask);
+
+  if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) perror("errore installazione sigaction!");
 
   //clear();
   int char_input;
@@ -33,9 +45,17 @@ void TUI_default_interface(){
   WINDOW* window3 = newwin(max_y-3, max_x, 3, 0);//process list window
   WINDOW* window4 = newwin(3, max_x, 3, 0);;//finestra input testuale visibile, non sempre utilizzata
 
+  //temporaneo?
+  windows_ptr = (WINDOWS_t*) malloc(sizeof(WINDOWS_t)); //https://www.microchip.com/forums/m1167860.aspx ...
+
+  windows_ptr->w1 = window1;
+  windows_ptr->w2 = NULL;
+  windows_ptr->w3 = window3;
+  windows_ptr->w4 = window4;
+
   //le lascio per controllare se sforo nel terminale, non so se le terro'...
   box(window1, (int) '|', (int) '-');
-  //box(window2, (int) '|', (int) '-');
+  //box(window2, (int) '|', (int) '-');%d
   box(window3, (int) '|', (int) '-');
 
   mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
@@ -56,16 +76,9 @@ void TUI_default_interface(){
 
   getmaxyx(stdscr, max_y, max_x);
 
-  while(1){
-    //refresh UI
-    /*if(){
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-      wrefresh(window3);
-      print_proc(window3, w, i);
-    }*/
+  alarm(REFRESH_RATE);
 
+  while(1){
     if(is_term_resized(max_y, max_x)){
       resize_term_custom(window1, window2, window3, window4, max_y, max_x, DEFAULT_IF);
       print_proc(window3, w, i);
@@ -128,6 +141,9 @@ void TUI_default_interface(){
       box(window3, (int) '|', (int) '-');
       wrefresh(window3);
 
+      global_w = w;
+      global_i = i;
+
       print_proc(window3, w, i);
 
     }else if(char_input == KEY_DOWN){
@@ -139,6 +155,9 @@ void TUI_default_interface(){
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
       wrefresh(window3);
+
+      global_w = w;
+      global_i = i;
 
       print_proc(window3, w, i);
     }
@@ -640,7 +659,7 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   wresize(window3, max_y-3, max_x);
   wclear(window3);
   wrefresh(window3);
-  box(window3, (int) '|', (int) '-');
+  box(window3, (int) '|', (int) '-'); 
 
   print_proc_advanced(window3, 0, 0);
   wrefresh(window3);
@@ -694,6 +713,7 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   nodelay(stdscr, true);
   //keypad(stdscr, false);
+  free(windows_ptr);
 
   return;
 }
@@ -868,7 +888,7 @@ void TUI_find_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 }
 
 void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
-  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (s)stats");
+  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
   wrefresh(window1);
 
   wclear(window4);
@@ -964,6 +984,21 @@ void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 }
 
 
-void signal_handler(int sig){
+void refresh_UI(){ 
+  //devo differenziare tra le le UI chiamanti
+  wclear(windows_ptr->w3);
+  wrefresh(windows_ptr->w3);
+  box(windows_ptr->w3, (int) '|', (int) '-');
+
+  print_proc(windows_ptr->w3, global_w, global_i);
+
   return;
+}
+
+void signal_handler(int sig){
+  //TBD
+  //stavo leggendo che non è una buona pratica installare un allarme così (a causa del context switch), informati... per ora lo implemento così per vedere se funziona
+  refresh_UI();
+  alarm(REFRESH_RATE);
+  //return;
 }

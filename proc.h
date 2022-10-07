@@ -21,6 +21,7 @@
 #define BUFFER_STAT_LENGHT 256
 #define RET_LENGHT 256
 #define CMD_LINE_LENGHT 7
+#define REFRESH_RATE 1 
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 
