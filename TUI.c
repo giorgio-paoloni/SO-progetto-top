@@ -1,26 +1,32 @@
 #include "TUI.h"
 
-WINDOWS_t* windows_ptr;// = (WINDOWS_t*) malloc(sizeof(WINDOWS_t));
+WINDOW* window1;
+WINDOW* window2;
+WINDOW* window3;
+WINDOW* window4;
 
-int global_w, global_i;//problemi tecnici...
-//w tiene il conto del numero dei processi letti, mentre i tiene conto della riga dove stampare nella finestra
+struct sigaction signal_handler_struct, signal_handler_struct_old;
 
 
-//int value1 = 0;
+int starting_row = 2, starting_process = 0;
+//i = starting_row = indica la riga della finestra ncurses dove stampare
+//w = staring_process= indica il processo da cui iniziare a stampare
+
+//int y, x;
+int max_y, max_x;
+
+int current_if = DEFAULT_IF;
 
 void TUI_default_interface(){
-  //gestione segnali timer, server per il refresh della schermata automatico ogni tot secondi, TBD...
-  struct sigaction signal_handler_struct, signal_handler_struct_old;
+
   memset(&signal_handler_struct, 0, sizeof(struct sigaction));
   memset(&signal_handler_struct_old, 0, sizeof(struct sigaction));
-  
   signal_handler_struct.sa_handler = &signal_handler;
   signal_handler_struct.sa_flags = 0;
   sigemptyset(&signal_handler_struct.sa_mask);
 
   if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) perror("errore installazione sigaction!");
 
-  //clear();
   int char_input;
 
   initscr(); //ncurses, inizializza cose...
@@ -30,9 +36,6 @@ void TUI_default_interface(){
   keypad(stdscr, true); //abilita tasti particolari come FNn o backspace ecc
   //credits. https://stackoverflow.com/questions/27200597/c-ncurses-key-backspace-not-working
 
-  //int y, x;
-  int max_y, max_x;
-
   //getyx(stdscr, y, x);//stdscr e' di ncurses, la funzione ottiene la posizione del cursore nella finestra (0,0)
   getmaxyx(stdscr, max_y, max_x);//ottiene la dimensione massima attuale della finestra di terminale
 
@@ -40,18 +43,18 @@ void TUI_default_interface(){
 
   refresh();
 
-  WINDOW* window1 = newwin(3, max_x, 0, 0); //info & commands window
-  WINDOW* window2 = NULL;// newwin(8, max_x, 3, 0); //stats window, alla fine ho deciso di implementarla su un'altra schermata, rimane perche' altrimenti dovrei shiftare le finestre di -1 e non voglio creare errori.
-  WINDOW* window3 = newwin(max_y-3, max_x, 3, 0);//process list window
-  WINDOW* window4 = newwin(3, max_x, 3, 0);;//finestra input testuale visibile, non sempre utilizzata
+  window1 = newwin(3, max_x, 0, 0); //info & commands window
+  window2 = NULL;// newwin(8, max_x, 3, 0); //stats window, alla fine ho deciso di implementarla su un'altra schermata, rimane perche' altrimenti dovrei shiftare le finestre di -1 e non voglio creare errori.
+  window3 = newwin(max_y-3, max_x, 3, 0);//process list window
+  window4 = newwin(3, max_x, 3, 0);;//finestra input testuale visibile, non sempre utilizzata
 
   //temporaneo?
-  windows_ptr = (WINDOWS_t*) malloc(sizeof(WINDOWS_t)); //https://www.microchip.com/forums/m1167860.aspx ...
+  //windows_ptr = (WINDOWS_t*) malloc(sizeof(WINDOWS_t)); //https://www.microchip.com/forums/m1167860.aspx ...
 
-  windows_ptr->w1 = window1;
-  windows_ptr->w2 = NULL;
-  windows_ptr->w3 = window3;
-  windows_ptr->w4 = window4;
+  //windows_ptr->w1 = window1;
+  //windows_ptr->w2 = NULL;
+  //windows_ptr->w3 = window3;
+  //windows_ptr->w4 = window4;
 
   //le lascio per controllare se sforo nel terminale, non so se le terro'...
   box(window1, (int) '|', (int) '-');
@@ -70,7 +73,8 @@ void TUI_default_interface(){
   nodelay(stdscr, true);//per non blocking getch, credits. https://gist.github.com/mfcworks/3a32513f26bdc58fd3bd, devo rileggermi bene il man
   keypad(stdscr, true);
 
-  int i = 2, w = 0; //w tiene il conto del numero dei processi letti, mentre i tiene conto della riga dove stampare nella finestra
+  starting_row = 2, starting_process = 0;
+  //i = 2, w = 0; //w tiene il conto del numero dei processi letti, mentre i tiene conto della riga dove stampare nella finestra
 
   print_proc(window3, 0, 0);
 
@@ -79,9 +83,12 @@ void TUI_default_interface(){
   alarm(REFRESH_RATE);
 
   while(1){
+
+    current_if = DEFAULT_IF;
+
     if(is_term_resized(max_y, max_x)){
-      resize_term_custom(window1, window2, window3, window4, max_y, max_x, DEFAULT_IF);
-      print_proc(window3, w, i);
+      resize_term_custom();
+      print_proc(window3, starting_process, starting_row);
       getmaxyx(stdscr, max_y, max_x);
     }
 
@@ -90,50 +97,50 @@ void TUI_default_interface(){
     if(char_input == (int) 'q' || char_input == (int) 'Q') break; //l'utente ha inserito q, cioe' QUIT
 
     if(char_input == (int) 'h' || char_input == (int) 'H'){//l'utente ha inserito h, cioe' HELP
-      TUI_help_interface(window1, window2, window3, window4, max_y, max_x);
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_help_interface();
+      reset_to_default_interface();
 
     }else if(char_input == (int) 'k' || char_input == (int) 'K'){//l'utente ha inserito k, cioe' kill
 
-      TUI_kill_interface(window1, window2, window3, window4, max_y, max_x);
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_kill_interface();
+      reset_to_default_interface();
 
     }else if(char_input == (int) 'l' || char_input == (int) 'L'){
 
-      TUI_list_interface(window1, window2, window3, window4, max_y, max_x);
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_list_interface();
+      reset_to_default_interface();
 
     }else if(char_input == (int) 's' || char_input == (int) 's'){
-      //TUI_stats_interface(window1, window2, window3, window4, max_y, max_x);
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      //TUI_stats_interface();
+      reset_to_default_interface();
 
     }else if(char_input == (int) 'z' || char_input == (int) 'Z'){
-      TUI_sleep_interface(window1, window2, window3, window4, max_y, max_x);
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_sleep_interface();
+      reset_to_default_interface();
 
     }else if(char_input == (int) 'r' || char_input == (int) 'R'){
-      TUI_resume_interface(window1, window2, window3, window4, max_y, max_x);
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      TUI_resume_interface();
+      reset_to_default_interface();
 
     }else if(char_input == (int) 'e' || char_input == (int) 'E'){//easter-egg, vorrei implementare un qualcosa alla sl https://github.com/mtoyoda/sl
       //TBD
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      reset_to_default_interface();
     }else if(char_input == (int) 'f' || char_input == (int) 'F'){
       //TBD
-      //TUI_find_interface(window1, window2, window3, window4, max_y, max_x);
-      reset_to_default_interface(window1, window2, window3, window4, max_y, max_x);
+      //TUI_find_interface();
+      reset_to_default_interface();
     }else if (char_input == KEY_UP){
 
-      if(w > 0){
-        w--;
+      if(starting_process > 0){
+        starting_process--;
       }else{
-        w = current_number_of_processes();
+        starting_process = current_number_of_processes();
       }
 
-      if(i > 0){
-        i--;
+      if(starting_row > 0){
+        starting_row--;
       }else{
-        i = max_y;
+        starting_row = max_y;
       }
 
       wclear(window3);
@@ -141,25 +148,20 @@ void TUI_default_interface(){
       box(window3, (int) '|', (int) '-');
       wrefresh(window3);
 
-      global_w = w;
-      global_i = i;
-
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_process);
+      //print_proc(window3, w, i);
 
     }else if(char_input == KEY_DOWN){
 
-      w = (w+1)%current_number_of_processes();
-      i = (i+1)%max_y;
+      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_row = (starting_row+1)%max_y;
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
       wrefresh(window3);
 
-      global_w = w;
-      global_i = i;
-
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
     }
 
   }
@@ -169,10 +171,13 @@ void TUI_default_interface(){
 
   endwin();//ncurses, dealloca le finestre
   clear();
+
   return;
 }
 
-void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void TUI_kill_interface(){
+
+  current_if = KILL_IF;
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -193,7 +198,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   box(window4, (int) '|', (int) '-');
 
-  print_proc(window3, 0, 0);
+  print_proc(window3, starting_process, starting_row);
 
   wrefresh(window1);
   wrefresh(window3);
@@ -202,13 +207,10 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   refresh();
 
   char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
-
-  int  i = 0, j = 0, w = 0;
-  //i = indica la riga della finestra ncurses dove stampare
-  //j = indica le celle occupate dell'array window_input
-  //w = indica il processo da cui iniziare a stampare
-
   memset(window_input,0,WINDOW_INPUT_LENGHT);
+
+  int  j = 0;
+  //j = indica le celle occupate dell'array window_input
 
   mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
   wrefresh(window4);
@@ -220,7 +222,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
     if(is_term_resized(max_y, max_x)){
-      resize_term_custom(window1, window2, window3, window4, max_y, max_x, KILL_IF);
+      resize_term_custom(window1, window2, window3, window4, max_y, max_x, current_if);
 
       if(j == 0){
         mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
@@ -231,7 +233,7 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
       }
       wrefresh(window4);
 
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
 
       getmaxyx(stdscr, max_y, max_x);
       continue;
@@ -259,34 +261,34 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
     if (window_input[j] == (char) KEY_UP){ //cast a char importante
 
-      if(w > 0){
-        w--;
+      if(starting_process > 0){
+        starting_process--;
       }else{
-        w = current_number_of_processes();
+        starting_process = current_number_of_processes();
       }
 
-      if(i > 0){
-        i--;
+      if(starting_row > 0){
+        starting_row--;
       }else{
-        i = max_y;
+        starting_row = max_y;
       }
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       continue;
 
     }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
 
-      w = (w+1)%current_number_of_processes();
-      i = (i+1)%max_y;
+      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_row = (starting_row+1)%max_y;
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
 
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_process);
       continue;
     }
 
@@ -320,7 +322,9 @@ void TUI_kill_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   return;
 }
 
-void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void TUI_sleep_interface(){
+
+  current_if = SLEEP_IF;
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -342,7 +346,7 @@ void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
 
   box(window4, (int) '|', (int) '-');
 
-  print_proc(window3, 0, 0);
+  print_proc(window3, starting_process, starting_row);
 
   wrefresh(window1);
   wrefresh(window3);
@@ -351,13 +355,11 @@ void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
   refresh();
 
   char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
-
-  int  i = 0, j = 0, w = 0;
-  //i = indica la riga della finestra ncurses dove stampare
-  //j = indica le celle occupate dell'array window_input
-  //w = indica il processo da cui iniziare a stampare
-
   memset(window_input,0,WINDOW_INPUT_LENGHT);
+
+  int  j = 0;
+  //j = indica le celle occupate dell'array window_input
+  
 
   mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
   wrefresh(window4);
@@ -380,7 +382,7 @@ void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
       }
       wrefresh(window4);
 
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
 
       getmaxyx(stdscr, max_y, max_x);
       continue;
@@ -408,34 +410,34 @@ void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
 
     if (window_input[j] == (char) KEY_UP){ //cast a char importante
 
-      if(w > 0){
-        w--;
+      if(starting_process > 0){
+        starting_process--;
       }else{
-        w = current_number_of_processes();
+        starting_process = current_number_of_processes();
       }
 
-      if(i > 0){
-        i--;
+      if(starting_row > 0){
+        starting_row--;
       }else{
-        i = max_y;
+        starting_row = max_y;
       }
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       continue;
 
     }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
 
-      w = (w+1)%current_number_of_processes();
-      i = (i+1)%max_y;
+      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_row = (starting_row+1)%max_y;
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
 
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       continue;
     }
 
@@ -469,7 +471,9 @@ void TUI_sleep_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
   return;
 }
 
-void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void TUI_resume_interface(){
+
+  current_if = RESUME_IF;
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -491,7 +495,7 @@ void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIN
 
   box(window4, (int) '|', (int) '-');
 
-  print_proc(window3, 0, 0);
+  print_proc(window3, starting_process, starting_row);
 
   wrefresh(window1);
   wrefresh(window3);
@@ -501,10 +505,9 @@ void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIN
 
   char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
 
-  int  i = 0, j = 0, w = 0;
-  //i = indica la riga della finestra ncurses dove stampare
+  int  j = 0;
+  
   //j = indica le celle occupate dell'array window_input
-  //w = indica il processo da cui iniziare a stampare
 
   memset(window_input,0,WINDOW_INPUT_LENGHT);
 
@@ -529,7 +532,7 @@ void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIN
       }
       wrefresh(window4);
 
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
 
       getmaxyx(stdscr, max_y, max_x);
       continue;
@@ -557,34 +560,34 @@ void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIN
 
     if (window_input[j] == (char) KEY_UP){ //cast a char importante
 
-      if(w > 0){
-        w--;
+      if(starting_process > 0){
+        starting_process--;
       }else{
-        w = current_number_of_processes();
+        starting_process = current_number_of_processes();
       }
 
-      if(i > 0){
-        i--;
+      if(starting_row > 0){
+        starting_row--;
       }else{
-        i = max_y;
+        starting_row = max_y;
       }
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       continue;
 
     }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
 
-      w = (w+1)%current_number_of_processes();
-      i = (i+1)%max_y;
+      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_row = (starting_row+1)%max_y;
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
 
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       continue;
     }
 
@@ -618,7 +621,9 @@ void TUI_resume_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIN
   return;
 }
 
-void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void TUI_help_interface(){
+
+  current_if = HELP_IF;
 
   wclear(window1);
   wrefresh(window1);
@@ -645,7 +650,9 @@ void TUI_help_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   return;
 }
 
-void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void TUI_list_interface(){
+
+  current_if = LIST_IF;
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -661,7 +668,8 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   wrefresh(window3);
   box(window3, (int) '|', (int) '-'); 
 
-  print_proc_advanced(window3, 0, 0);
+  print_proc(window3, starting_process, starting_row);
+
   wrefresh(window3);
 
   nodelay(stdscr, false);
@@ -669,35 +677,35 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   int char_input = getch();
 
-  int i = 0, w = 0;
+  //int i = 0, w = 0;
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B')){
 
     if(is_term_resized(max_y, max_x)){
       resize_term_custom(window1, window2, window3, window4, max_y, max_x, LIST_IF);
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       getmaxyx(stdscr, max_y, max_x);
     }
 
     //ciclica
     if (char_input == KEY_UP){
 
-      if(w > 0){
-        w--;
+      if(starting_process > 0){
+        starting_process--;
       }else{
-        w = current_number_of_processes();
+        starting_process = current_number_of_processes();
       }
 
-      if(i > 0){
-        i--;
+      if(starting_row > 0){
+        starting_row--;
       }else{
-        i = max_y;
+        starting_row = max_y;
       }
 
     }else if(char_input == KEY_DOWN){
 
-      w = (w+1)%current_number_of_processes();
-      i = (i+1)%max_y;
+      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_row = (starting_row+1)%max_y;
 
     }
 
@@ -706,19 +714,20 @@ void TUI_list_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     box(window3, (int) '|', (int) '-');
 
     //print_proc3(window3, i);
-    print_proc_advanced(window3, w, i);
+    print_proc_advanced(window3, starting_process, starting_row);
 
     char_input = getch();
   }
 
   nodelay(stdscr, true);
   //keypad(stdscr, false);
-  free(windows_ptr);
 
   return;
 }
 
-void TUI_stats_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void TUI_stats_interface(){
+
+  current_if = STATS_IF;
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -750,7 +759,9 @@ void TUI_stats_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WIND
   return;
 }
 
-void TUI_find_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void TUI_find_interface(){
+
+  current_if = FIND_IF;
 
   //NOTA: devo disabilitare b, perché potrebbe essere conenuto nel nome del processo, ora quando premo b in ogni momento torna indietro
   //implementare 2 tipi di ricerca, se non è numerico allora cerco solo nei cmdline tramite regex, altrimenti devo cercare sia nei pid (tramite ricerca binaria per ottenere la cmdline corrispondente), che nei cmdline per ottenere il PID corrispondente
@@ -786,7 +797,7 @@ void TUI_find_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
   char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
 
-  int  i = 0, j = 0, w = 0;
+  int j = 0;
   //i = indica la riga della finestra ncurses dove stampare
   //j = indica le celle occupate dell'array window_input
   //w = indica il processo da cui iniziare a stampare
@@ -824,34 +835,34 @@ void TUI_find_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
     if (window_input[j] == (char) KEY_UP){ //cast a char importante
 
-      if(w > 0){
-        w--;
+      if(starting_process > 0){
+        starting_process--;
       }else{
-        w = current_number_of_processes();
+        starting_process = current_number_of_processes();
       }
 
-      if(i > 0){
-        i--;
+      if(starting_row > 0){
+        starting_row--;
       }else{
-        i = max_y;
+        starting_row = max_y;
       }
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       continue;
 
     }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
 
-      w = (w+1)%current_number_of_processes();
-      i = (i+1)%max_y;
+      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_row = (starting_row+1)%max_y;
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
 
-      print_proc(window3, w, i);
+      print_proc(window3, starting_process, starting_row);
       continue;
     }
 
@@ -887,7 +898,8 @@ void TUI_find_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   return;
 }
 
-void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int max_y, int max_x){
+void reset_to_default_interface(){
+
   mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
   wrefresh(window1);
 
@@ -906,12 +918,12 @@ void reset_to_default_interface(WINDOW* window1, WINDOW* window2, WINDOW* window
 
   box(window3, (int) '|', (int) '-');
 
-  print_proc(window3, 0, 0);
+  print_proc(window3, starting_process, starting_row);
   wrefresh(window3);
 
 }
 
-void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDOW* window4, int old_max_y, int old_max_x, int calling_interface){ //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
+void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
   //NB:NON FUNZIONA BENE CON RIMENSIONAMENTI DEGENERI, ES: 2x2px, la finestra deve essere un minimo grande per rappresentare le info
   //dimensioni finestre
   /*
@@ -935,12 +947,12 @@ void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
   wrefresh(window3);
   wrefresh(window4);
 
-  if(calling_interface == DEFAULT_IF || calling_interface == LIST_IF){
+  if(current_if == DEFAULT_IF || current_if == LIST_IF){
     wresize(window1, 3, new_max_x);
     mvwin(window1, 0, 0);
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
-    if(calling_interface == DEFAULT_IF){
+    if(current_if == DEFAULT_IF){
       mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
     }else{
       mvwprintw(window1, 1, 2, "(b)back");
@@ -955,7 +967,7 @@ void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     box(window3, (int) '|', (int) '-');
     wrefresh(window3);
 
-  }else if(calling_interface == KILL_IF || calling_interface == SLEEP_IF || calling_interface == RESUME_IF ){
+  }else if(current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF ){
     wresize(window1, 3, new_max_x);
     mvwin(window1, 0, 0);
     wrefresh(window1);
@@ -975,7 +987,7 @@ void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
     box(window4, (int) '|', (int) '-');
     //mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
     wrefresh(window4);
-  }else if(calling_interface == LIST_IF){
+  }else if(current_if == LIST_IF){
 
   }//etc...
 
@@ -986,11 +998,11 @@ void resize_term_custom(WINDOW* window1, WINDOW* window2, WINDOW* window3, WINDO
 
 void refresh_UI(){ 
   //devo differenziare tra le le UI chiamanti
-  wclear(windows_ptr->w3);
-  wrefresh(windows_ptr->w3);
-  box(windows_ptr->w3, (int) '|', (int) '-');
+  wclear(window3);
+  wrefresh(window3);
+  box(window3, (int) '|', (int) '-');
 
-  print_proc(windows_ptr->w3, global_w, global_i);
+  print_proc(window3, starting_process, starting_row);
 
   return;
 }
