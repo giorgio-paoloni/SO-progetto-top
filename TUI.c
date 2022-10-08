@@ -48,14 +48,6 @@ void TUI_default_interface(){
   window3 = newwin(max_y-3, max_x, 3, 0);//process list window
   window4 = newwin(3, max_x, 3, 0);;//finestra input testuale visibile, non sempre utilizzata
 
-  //temporaneo?
-  //windows_ptr = (WINDOWS_t*) malloc(sizeof(WINDOWS_t)); //https://www.microchip.com/forums/m1167860.aspx ...
-
-  //windows_ptr->w1 = window1;
-  //windows_ptr->w2 = NULL;
-  //windows_ptr->w3 = window3;
-  //windows_ptr->w4 = window4;
-
   //le lascio per controllare se sforo nel terminale, non so se le terro'...
   box(window1, (int) '|', (int) '-');
   //box(window2, (int) '|', (int) '-');%d
@@ -176,449 +168,18 @@ void TUI_default_interface(){
 }
 
 void TUI_kill_interface(){
-
   current_if = KILL_IF;
-
-  wclear(window1);
-  box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
-
-  wclear(window3);
-  wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-  wresize(window3, max_y-6, max_x);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
-  //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
-
-  mvwin(window3, 6, 0);
-  wrefresh(window3);
-
-  box(window3, (int) '|', (int) '-');
-  wrefresh(window3);
-
-  //mvwprintw(window3, 1, 2, "test2 in\n");
-
-  box(window4, (int) '|', (int) '-');
-
-  print_proc(window3, starting_process, starting_row);
-
-  wrefresh(window1);
-  wrefresh(window3);
-  wrefresh(window4);
-
-  refresh();
-
-  char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
-  memset(window_input,0,WINDOW_INPUT_LENGHT);
-
-  int  j = 0;
-  //j = indica le celle occupate dell'array window_input
-
-  mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
-  wrefresh(window4);
-
-  //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
-
-  //nodelay(stdscr, false); //DISABILITATA TEMPORANEAMENTE, CONTROLLA
-
-  while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
-
-    if(is_term_resized(max_y, max_x)){
-      resize_term_custom(window1, window2, window3, window4, max_y, max_x, current_if);
-
-      if(j == 0){
-        mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
-      }else{
-        window_input[j] = '\0'; //evita caratteri sporchi
-        mvwprintw(window4, 1, 2, "PID: ");
-        mvwprintw(window4, 1, 7, window_input);
-      }
-      wrefresh(window4);
-
-      print_proc(window3, starting_process, starting_row);
-
-      getmaxyx(stdscr, max_y, max_x);
-      continue;
-    }
-
-    if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
-      window_input[0] = 'b';
-      break;
-    }
-
-    if(j>0 && (window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
-
-      window_input[j] = '\0'; //evita caratteri sporchi
-      window_input[j-1] = '\0';//cancella il carattere precedente
-
-      wclear(window4);
-      box(window4, (int) '|', (int) '-');
-      wrefresh(window4);
-      mvwprintw(window4, 1, 2, "PID: ");
-      mvwprintw(window4, 1, 7, window_input);
-      wrefresh(window4);
-      j--;
-      continue;
-    }
-
-    if (window_input[j] == (char) KEY_UP){ //cast a char importante
-
-      if(starting_process > 0){
-        starting_process--;
-      }else{
-        starting_process = current_number_of_processes();
-      }
-
-      if(starting_row > 0){
-        starting_row--;
-      }else{
-        starting_row = max_y;
-      }
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-      print_proc(window3, starting_process, starting_row);
-      continue;
-
-    }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
-
-      starting_process = (starting_process+1)%current_number_of_processes();
-      starting_row = (starting_row+1)%max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc(window3, starting_process, starting_process);
-      continue;
-    }
-
-    if(window_input[j] < '0' || window_input[j] > '9') continue; //controllo PID, e' SOLO numerico
-
-    wclear(window4);
-    box(window4, (int) '|', (int) '-');
-    wrefresh(window4);
-    mvwprintw(window4, 1, 2, "PID: ");
-    mvwprintw(window4, 1, 7, window_input);
-    wrefresh(window4);
-    j++;
-  }
-
-  //nodelay(stdscr, true);
-
-  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
-    if(kill_PID(atoi(window_input)) == -1){//err
-      mvwprintw(window4, 1, j+8, "non ucciso");
-    }else{
-      mvwprintw(window4, 1, j+8, "ucciso");
-    }
-    wrefresh(window4);
-
-    window_input[0] = getch();
-  }
-
-  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
-    window_input[0] = getch();
-  }
-  return;
+  TUI_kill_sleep_resume_interface();
 }
 
 void TUI_sleep_interface(){
-
   current_if = SLEEP_IF;
-
-  wclear(window1);
-  box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
-
-  wclear(window3);
-  wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-
-  wresize(window3, max_y-6, max_x);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
-  //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
-
-  mvwin(window3, 6, 0);
-  wrefresh(window3);
-
-  box(window3, (int) '|', (int) '-');
-  wrefresh(window3);
-
-  mvwprintw(window3, 1, 2, "test2 in\n");
-
-  box(window4, (int) '|', (int) '-');
-
-  print_proc(window3, starting_process, starting_row);
-
-  wrefresh(window1);
-  wrefresh(window3);
-  wrefresh(window4);
-
-  refresh();
-
-  char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
-  memset(window_input,0,WINDOW_INPUT_LENGHT);
-
-  int  j = 0;
-  //j = indica le celle occupate dell'array window_input
-  
-
-  mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
-  wrefresh(window4);
-
-  //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
-
-  //nodelay(stdscr, false);
-
-  while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
-
-    if(is_term_resized(max_y, max_x)){
-      resize_term_custom(window1, window2, window3, window4, max_y, max_x, SLEEP_IF);
-
-      if(j == 0){
-        mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
-      }else{
-        window_input[j] = '\0'; //evita caratteri sporchi
-        mvwprintw(window4, 1, 2, "PID: ");
-        mvwprintw(window4, 1, 7, window_input);
-      }
-      wrefresh(window4);
-
-      print_proc(window3, starting_process, starting_row);
-
-      getmaxyx(stdscr, max_y, max_x);
-      continue;
-    }
-
-    if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
-      window_input[0] = 'b';
-      break;
-    }
-
-    if(j>0 && (window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
-
-      window_input[j] = '\0'; //evita caratteri sporchi
-      window_input[j-1] = '\0';//cancella il carattere precedente
-
-      wclear(window4);
-      box(window4, (int) '|', (int) '-');
-      wrefresh(window4);
-      mvwprintw(window4, 1, 2, "PID: ");
-      mvwprintw(window4, 1, 7, window_input);
-      wrefresh(window4);
-      j--;
-      continue;
-    }
-
-    if (window_input[j] == (char) KEY_UP){ //cast a char importante
-
-      if(starting_process > 0){
-        starting_process--;
-      }else{
-        starting_process = current_number_of_processes();
-      }
-
-      if(starting_row > 0){
-        starting_row--;
-      }else{
-        starting_row = max_y;
-      }
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-      print_proc(window3, starting_process, starting_row);
-      continue;
-
-    }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
-
-      starting_process = (starting_process+1)%current_number_of_processes();
-      starting_row = (starting_row+1)%max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc(window3, starting_process, starting_row);
-      continue;
-    }
-
-    if(window_input[j] < '0' || window_input[j] > '9') continue; //controllo PID, e' SOLO numerico
-
-    wclear(window4);
-    box(window4, (int) '|', (int) '-');
-    wrefresh(window4);
-    mvwprintw(window4, 1, 2, "PID: ");
-    mvwprintw(window4, 1, 7, window_input);
-    wrefresh(window4);
-    j++;
-  }
-
-  //nodelay(stdscr, true);
-
-  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
-    if(sleep_PID(atoi(window_input)) == -1){//err
-      mvwprintw(window4, 1, j+8, "non addormentato");
-    }else{
-      mvwprintw(window4, 1, j+8, "addormentato");
-    }
-    wrefresh(window4);
-
-    window_input[0] = getch();
-  }
-
-  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
-    window_input[0] = getch();
-  }
-  return;
+  TUI_kill_sleep_resume_interface();
 }
 
 void TUI_resume_interface(){
-
   current_if = RESUME_IF;
-
-  wclear(window1);
-  box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
-
-  wclear(window3);
-  wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-
-  wresize(window3, max_y-6, max_x);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
-  //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
-
-  mvwin(window3, 6, 0);
-  wrefresh(window3);
-
-  box(window3, (int) '|', (int) '-');
-  wrefresh(window3);
-
-  mvwprintw(window3, 1, 2, "test2 in\n");
-
-  box(window4, (int) '|', (int) '-');
-
-  print_proc(window3, starting_process, starting_row);
-
-  wrefresh(window1);
-  wrefresh(window3);
-  wrefresh(window4);
-
-  refresh();
-
-  char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
-
-  int  j = 0;
-  
-  //j = indica le celle occupate dell'array window_input
-
-  memset(window_input,0,WINDOW_INPUT_LENGHT);
-
-  mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
-  wrefresh(window4);
-
-  //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
-
-  //nodelay(stdscr, false);
-
-  while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
-
-    if(is_term_resized(max_y, max_x)){
-      resize_term_custom(window1, window2, window3, window4, max_y, max_x, RESUME_IF);
-
-      if(j == 0){
-        mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
-      }else{
-        window_input[j] = '\0'; //evita caratteri sporchi
-        mvwprintw(window4, 1, 2, "PID: ");
-        mvwprintw(window4, 1, 7, window_input);
-      }
-      wrefresh(window4);
-
-      print_proc(window3, starting_process, starting_row);
-
-      getmaxyx(stdscr, max_y, max_x);
-      continue;
-    }
-
-    if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
-      window_input[0] = 'b';
-      break;
-    }
-
-    if(j>0 && (window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
-
-      window_input[j] = '\0'; //evita caratteri sporchi
-      window_input[j-1] = '\0';//cancella il carattere precedente
-
-      wclear(window4);
-      box(window4, (int) '|', (int) '-');
-      wrefresh(window4);
-      mvwprintw(window4, 1, 2, "PID: ");
-      mvwprintw(window4, 1, 7, window_input);
-      wrefresh(window4);
-      j--;
-      continue;
-    }
-
-    if (window_input[j] == (char) KEY_UP){ //cast a char importante
-
-      if(starting_process > 0){
-        starting_process--;
-      }else{
-        starting_process = current_number_of_processes();
-      }
-
-      if(starting_row > 0){
-        starting_row--;
-      }else{
-        starting_row = max_y;
-      }
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-      print_proc(window3, starting_process, starting_row);
-      continue;
-
-    }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
-
-      starting_process = (starting_process+1)%current_number_of_processes();
-      starting_row = (starting_row+1)%max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int) '|', (int) '-');
-
-      print_proc(window3, starting_process, starting_row);
-      continue;
-    }
-
-    if(window_input[j] < '0' || window_input[j] > '9') continue; //controllo PID, e' SOLO numerico
-
-    wclear(window4);
-    box(window4, (int) '|', (int) '-');
-    wrefresh(window4);
-    mvwprintw(window4, 1, 2, "PID: ");
-    mvwprintw(window4, 1, 7, window_input);
-    wrefresh(window4);
-    j++;
-  }
-
-  //nodelay(stdscr, true);
-
-  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
-    if(resume_PID(atoi(window_input)) == -1){//err
-      mvwprintw(window4, 1, j+8, "non risvegliato");
-    }else{
-      mvwprintw(window4, 1, j+8, "risvegliato");
-    }
-    wrefresh(window4);
-
-    window_input[0] = getch();
-  }
-
-  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
-    window_input[0] = getch();
-  }
-  return;
+  TUI_kill_sleep_resume_interface();
 }
 
 void TUI_help_interface(){
@@ -827,7 +388,7 @@ void TUI_find_interface(){
       box(window4, (int) '|', (int) '-');
       wrefresh(window4);
       mvwprintw(window4, 1, 2, "PID/Processo: ");
-      mvwprintw(window4, 1, 7, window_input);
+      mvwprintw(window4, 1, 7, "%s", window_input);
       wrefresh(window4);
       j--;
       continue;
@@ -872,7 +433,7 @@ void TUI_find_interface(){
     box(window4, (int) '|', (int) '-');
     wrefresh(window4);
     mvwprintw(window4, 1, 2, "PID/Processo: ");
-    mvwprintw(window4, 1, 15, window_input);
+    mvwprintw(window4, 1, 15, "%s", window_input);
     wrefresh(window4);
     j++;
   }
@@ -920,6 +481,189 @@ void reset_to_default_interface(){
 
   print_proc(window3, starting_process, starting_row);
   wrefresh(window3);
+
+}
+
+void TUI_kill_sleep_resume_interface(){
+  
+  wclear(window1);
+  box(window1, (int) '|', (int) '-');
+  mvwprintw(window1, 1, 2, "(b)back");
+
+  wclear(window3);
+  wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
+  wresize(window3, max_y-6, max_x);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
+  //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
+
+  mvwin(window3, 6, 0);
+  wrefresh(window3);
+
+  box(window3, (int) '|', (int) '-');
+  wrefresh(window3);
+
+  //mvwprintw(window3, 1, 2, "test2 in\n");
+
+  box(window4, (int) '|', (int) '-');
+
+  print_proc(window3, starting_process, starting_row);
+
+  wrefresh(window1);
+  wrefresh(window3);
+  wrefresh(window4);
+
+  refresh();
+
+  char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
+  memset(window_input,0,WINDOW_INPUT_LENGHT);
+
+  int  j = 0;
+  //j = indica le celle occupate dell'array window_input
+
+  if(current_if == KILL_IF){
+    mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
+  }else if(current_if == SLEEP_IF){
+    mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
+  }else{
+    mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
+  }
+  
+  wrefresh(window4);
+
+  //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
+
+  //nodelay(stdscr, false); //DISABILITATA TEMPORANEAMENTE, CONTROLLA
+
+  while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
+
+    if(is_term_resized(max_y, max_x)){
+      resize_term_custom(window1, window2, window3, window4, max_y, max_x, current_if);
+
+      if(j == 0){
+
+        if(current_if == KILL_IF){
+          mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
+        }else if(current_if == SLEEP_IF){
+          mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
+        }else{
+          mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
+        }
+
+      }else{
+        window_input[j] = '\0'; //evita caratteri sporchi
+        mvwprintw(window4, 1, 2, "PID: ");
+        mvwprintw(window4, 1, 7, "%s", window_input);
+      }
+      wrefresh(window4);
+
+      print_proc(window3, starting_process, starting_row);
+
+      getmaxyx(stdscr, max_y, max_x);
+      continue;
+    }
+
+    if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
+      window_input[0] = 'b';
+      break;
+    }
+
+    if(j>0 && (window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
+
+      window_input[j] = '\0'; //evita caratteri sporchi
+      window_input[j-1] = '\0';//cancella il carattere precedente
+
+      wclear(window4);
+      box(window4, (int) '|', (int) '-');
+      wrefresh(window4);
+      mvwprintw(window4, 1, 2, "PID: ");
+      mvwprintw(window4, 1, 7, "%s", window_input);
+      wrefresh(window4);
+      j--;
+      continue;
+    }
+
+    if (window_input[j] == (char) KEY_UP){ //cast a char importante
+
+      if(starting_process > 0){
+        starting_process--;
+      }else{
+        starting_process = current_number_of_processes();
+      }
+
+      if(starting_row > 0){
+        starting_row--;
+      }else{
+        starting_row = max_y;
+      }
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+      print_proc(window3, starting_process, starting_row);
+      continue;
+
+    }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
+
+      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_row = (starting_row+1)%max_y;
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc(window3, starting_process, starting_process);
+      continue;
+    }
+
+    if(window_input[j] < '0' || window_input[j] > '9') continue; //controllo PID, e' SOLO numerico
+
+    wclear(window4);
+    box(window4, (int) '|', (int) '-');
+    wrefresh(window4);
+    mvwprintw(window4, 1, 2, "PID: ");
+    mvwprintw(window4, 1, 7, "%s", window_input);
+    wrefresh(window4);
+    j++;
+  }
+
+  //nodelay(stdscr, true);
+
+  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
+    if(current_if == KILL_IF){
+
+      if(kill_PID(atoi(window_input)) == -1){//err
+        mvwprintw(window4, 1, j+8, "non ucciso");
+      }else{
+        mvwprintw(window4, 1, j+8, "ucciso");
+      }
+
+    }else if(current_if == SLEEP_IF){
+
+      if(sleep_PID(atoi(window_input)) == -1){//err
+        mvwprintw(window4, 1, j+8, "non addormentato");
+      }else{
+        mvwprintw(window4, 1, j+8, "addormentato");
+      }
+      
+    }else{
+
+      if(resume_PID(atoi(window_input)) == -1){//err
+        mvwprintw(window4, 1, j+8, "non risvegliato");
+      }else{
+        mvwprintw(window4, 1, j+8, "risvegliato");
+      }
+
+    }
+
+    wrefresh(window4);
+
+    window_input[0] = getch();
+  }
+
+  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
+    window_input[0] = getch();
+  }
+
+  return;
 
 }
 

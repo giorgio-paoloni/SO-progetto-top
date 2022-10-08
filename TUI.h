@@ -1,4 +1,6 @@
 #include "proc.h"
+#include "process_monitor.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,6 +17,7 @@ void TUI_stats_interface();
 void TUI_sleep_interface();
 void TUI_resume_interface();
 void TUI_find_interface();
+void TUI_kill_sleep_resume_interface();
 
 //utili
 void reset_to_default_interface();
@@ -34,6 +37,7 @@ void signal_handler(int sig);
 #define STATS_IF 6
 #define HELP_IF 7
 
+//altro
 #define WINDOW_INPUT_LENGHT 32
 #define REFRESH_RATE 1
 

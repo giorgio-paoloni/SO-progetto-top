@@ -86,7 +86,7 @@ void print_proc_advanced(WINDOW* window, int current_index, int start_row){
   wrefresh(window);
   box(window, (int) '|', (int) '-');
 
-  mvwprintw(window, 1, 2, "| PID | command | state | priority | total time | user time | s.user time | CPU% | \n");
+  mvwprintw(window, 1, 2, "| PID | command | state | priority | total time | user time | s.user time | CPU%%| \n");
 
   while((proc_iter = readdir(proc_dir)) != NULL){
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){

@@ -1,4 +1,5 @@
-#include "proc.h"
+//#include "proc.h"
+#include "TUI.h"
 #include "process_monitor.h"
 #include <ncurses.h> //libreria che e' molto utile per input asincroni su STDIN, per avere un STDIN senza essere bufferizzato, fornire una TUI (text-based user interface),...
 //STDSCR, in ncurses
