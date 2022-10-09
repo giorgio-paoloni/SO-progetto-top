@@ -77,6 +77,8 @@ void print_proc_advanced(WINDOW* window, int current_index, int start_row){
   char* pid_cmdline;
   char* pid_stat;
 
+  char* ret_pid_stats;
+
   FILE* file_cmdline;
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
@@ -86,7 +88,7 @@ void print_proc_advanced(WINDOW* window, int current_index, int start_row){
   wrefresh(window);
   box(window, (int) '|', (int) '-');
 
-  mvwprintw(window, 1, 2, "| PID | command | state | priority | total time | user time | s.user time | CPU%%| \n");
+  mvwprintw(window, 1, 2, "| PID | command | state | priority | total time | user time | s.user time | CPU%% | \0");
 
   while((proc_iter = readdir(proc_dir)) != NULL){
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
@@ -129,10 +131,13 @@ void print_proc_advanced(WINDOW* window, int current_index, int start_row){
         strcat(pid_stat, "/");
         strcat(pid_stat, "stat");
 
-        mvwprintw(window, i, 2, "%s | %s\n", proc_iter->d_name, print_PID_stats(pid_stat));
+        ret_pid_stats = print_PID_stats(pid_stat);
+
+        mvwprintw(window, i, 2, "%s | %s\n", proc_iter->d_name, ret_pid_stats);
         wrefresh(window);
 
         free(pid_stat);
+        free(ret_pid_stats);
         i++;
       }
 
@@ -160,7 +165,7 @@ char* print_PID_stats(char* path){
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc
 
   long unsigned int system_uptime_sec = 1;
-  long unsigned int total_time_sec = 0;
+  long long unsigned int total_time_sec = 0;
   long unsigned int user_time_clock = 0, user_time_sec = 0;
   long unsigned int superuser_time_clock = 0, superuser_time_sec = 0;
   long long unsigned int start_time_clock = 0, start_time_sec = 0;
@@ -192,6 +197,8 @@ char* print_PID_stats(char* path){
     //credits. https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat
     //credits. https://www.baeldung.com/linux/total-process-cpu-usage (altro linguaggio ma comprensibile e riscribile in C, nella guida dice starttime e' 21, invece e' 22 da man proc)
 
+    ///proc/[pid]/stat
+
     //i campi sono oltre 50, non tutti ci servono
     //ricordo che sono espressi in Hertz (1/T), quindi devo ottenere la durata di T dal sistema
 
@@ -214,17 +221,13 @@ char* print_PID_stats(char* path){
     }else if(i == 3){ //state  %c
       state = (char) token[0];
     }else if(i == 14){//utime  %lu : tempo speso dal processo in user
-      user_time_clock = (unsigned) atol(token);
+      user_time_clock = strtoul(token, NULL, 10); // https://pubs.opengroup.org/onlinepubs/9699919799/functions/strtoul.html
     }else if(i == 15){//stime  %lu : tempo speso dal processo in superuser (kernel)
-      superuser_time_clock = (unsigned) atol(token);
-    }else if(i == 16){//cutime  %ld : tempo speso dai figli del processo in user
-      //nella metrica del tempo totale ho deciso di non includerlo, ma lo inserisco per eventuali future modifiche
-    }else if(i == 17){//cstime  %ld : tempo speso dai figli del processo in superuser
-      //nella metrica del tempo totale ho deciso di non includerlo, ma lo inserisco per eventuali future modifiche
+      superuser_time_clock = strtoul(token, NULL, 10);
     }else if(i == 18){//priority  %ld : priorita' processo
       priority = atol(token);
     }else if(i == 22){//starttime  %llu : tempo di avvio del processo a partire dal boot
-      start_time_clock = (unsigned) atoll(token);
+      start_time_clock = strtoull(token, NULL, 10);
       /*strcpy(ret, token);
       return ret;*/
     }
@@ -240,25 +243,42 @@ char* print_PID_stats(char* path){
   if(frequency == 0) frequency = 1; //err, divisione per 0
 
   //tempi utili
+  //F = 1/T => TF = 1 => T = 1/F
+
+  //https://en.wikipedia.org/wiki/C_data_types
+
+  //rappresentati come %lu le divisioni, perdo la virgola, è importante?
+  //per ora ho deciso di troncare le divisioni con la virgola.
+
+
   user_time_sec = user_time_clock / frequency;
   superuser_time_sec = superuser_time_clock / frequency;
   start_time_sec = start_time_clock / frequency;
-  total_time_sec = user_time_sec + superuser_time_sec;
+  total_time_sec = (long long unsigned) (user_time_sec + superuser_time_sec); //overflow somma?
 
-  if(total_time_sec == 0) total_time_sec = 1; //err, questo processo non ha tempo?
-
+  //if(total_time_sec == 0) total_time_sec = 1; //err, questo processo non ha tempo?
 
   system_uptime_sec = get_system_uptime();
-  /*mvwprintw(window, 1, 2, "tkn:%lu\n", system_uptime_sec);
-  wrefresh(window);
+  /*mvwprintw(window1, 1, 2, "tkn:%lu\n", system_uptime_sec);
+  wrefresh(window1);
   return;*/
+  
+  /*if(system_uptime_sec == 0){
+
+  }*/
+
+  //elapsed_time_sec = system_uptime_sec;
+  //elapsed_time_sec = start_time_sec ;
 
   elapsed_time_sec = system_uptime_sec - start_time_sec;
 
   if(elapsed_time_sec != 0){
-    cpu_percentage_used_time_sec = (total_time_sec*100)/elapsed_time_sec;
+    //cpu_percentage_used_time_sec = elapsed_time_sec;
+    //cpu_percentage_used_time_sec = total_time_sec;
+    cpu_percentage_used_time_sec = (double) (total_time_sec*100) / (double)elapsed_time_sec;
   }else{//il processo e' partito al boot, quindi dividerei per 0 (floating point ex)
-    cpu_percentage_used_time_sec = 1;
+    cpu_percentage_used_time_sec = 0;
+    //cpu_percentage_used_time_sec = 999;
   }
 
   //sprintf(ret, "%s", path);
@@ -267,7 +287,7 @@ char* print_PID_stats(char* path){
   /*strcpy(ret, command);
   return ret;*/
 
-  sprintf(ret, "%s | %c | %ld | %lu | %lu | %lu | %f", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec );
+  sprintf(ret, "%s | %c | %ld | %llu | %lu | %lu | %0.3f%%", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec );
 
   /*mvwprintw(window, y, 10, "Tot:%lu Usr:%lu Ker:%lu CPUper:%lu\n", total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec);
   wrefresh(window);*/
@@ -288,21 +308,35 @@ long unsigned int get_system_uptime(){
   if(file_proc_uptime == NULL){//err
     fclose(file_proc_uptime);
     free(buffer);
-    return 11;
+    return 0;
   }
 
   if(fgets(buffer, 256,file_proc_uptime) == NULL){//err
     fclose(file_proc_uptime);
     free(buffer);
-    return 11;
+    return 0;
   }
 
+  fgets(buffer, 256, file_proc_uptime);
+
   token = strtok(buffer, SEPARATOR1);
+
+  //NB: errore
+  //non alloca memoria, ma tokenizza il buffer, 
+  //ciao\tcome\tstai\t?
+  //diventa
+  //0123456789...
+  //ciao\0come\0stai\0?
+  //ad ogni ciclo di token cambia il puntatore
+  //buffer[0], buffer[1], buffer[10]
+  //se libero prima il buffer (free), sarà sempre 0 il token
+
+  int value = (long unsigned int) strtod(token, NULL);
 
   fclose(file_proc_uptime);
   free(buffer);
 
-  return (unsigned) atol(token);
+  return value;
 
 }
 

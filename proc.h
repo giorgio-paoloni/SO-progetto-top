@@ -27,6 +27,7 @@ typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent
 
 void print_proc(WINDOW* window, int current_index, int start_row);
 void print_proc_advanced(WINDOW* window, int current_index, int start_row);
+
 //utili
 long unsigned int get_system_uptime();
 char* print_PID_stats(char* path);

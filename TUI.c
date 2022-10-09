@@ -118,7 +118,6 @@ void TUI_default_interface(){
       //TBD
       reset_to_default_interface();
     }else if(char_input == (int) 'f' || char_input == (int) 'F'){
-      //TBD
       //TUI_find_interface();
       reset_to_default_interface();
     }else if (char_input == KEY_UP){
@@ -229,21 +228,20 @@ void TUI_list_interface(){
   wrefresh(window3);
   box(window3, (int) '|', (int) '-'); 
 
-  print_proc(window3, starting_process, starting_row);
+  print_proc_advanced(window3, starting_process, starting_row);
 
   wrefresh(window3);
 
-  nodelay(stdscr, false);
+  //nodelay(stdscr, false);
   //keypad(stdscr, true);
 
   int char_input = getch();
 
-  //int i = 0, w = 0;
-
   while(!(char_input == (int) 'b' || char_input == (int) 'B')){
+    
 
     if(is_term_resized(max_y, max_x)){
-      resize_term_custom(window1, window2, window3, window4, max_y, max_x, LIST_IF);
+      resize_term_custom();
       print_proc(window3, starting_process, starting_row);
       getmaxyx(stdscr, max_y, max_x);
     }
@@ -263,26 +261,30 @@ void TUI_list_interface(){
         starting_row = max_y;
       }
 
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc_advanced(window3, starting_process, starting_row);
+
     }else if(char_input == KEY_DOWN){
 
       starting_process = (starting_process+1)%current_number_of_processes();
       starting_row = (starting_row+1)%max_y;
 
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int) '|', (int) '-');
+
+      print_proc_advanced(window3, starting_process, starting_row);
+
     }
-
-    wclear(window3);
-    wrefresh(window3);
-    box(window3, (int) '|', (int) '-');
-
-    //print_proc3(window3, i);
-    print_proc_advanced(window3, starting_process, starting_row);
 
     char_input = getch();
   }
 
-  nodelay(stdscr, true);
+  //nodelay(stdscr, true);
   //keypad(stdscr, false);
-
   return;
 }
 
@@ -325,8 +327,6 @@ void TUI_find_interface(){
   current_if = FIND_IF;
 
   //NOTA: devo disabilitare b, perché potrebbe essere conenuto nel nome del processo, ora quando premo b in ogni momento torna indietro
-  //implementare 2 tipi di ricerca, se non è numerico allora cerco solo nei cmdline tramite regex, altrimenti devo cercare sia nei pid (tramite ricerca binaria per ottenere la cmdline corrispondente), che nei cmdline per ottenere il PID corrispondente
-  //per ora la find è disabilitata...
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -460,6 +460,8 @@ void TUI_find_interface(){
 }
 
 void reset_to_default_interface(){
+
+  current_if = DEFAULT_IF;
 
   mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
   wrefresh(window1);
@@ -746,7 +748,11 @@ void refresh_UI(){
   wrefresh(window3);
   box(window3, (int) '|', (int) '-');
 
-  print_proc(window3, starting_process, starting_row);
+  if(current_if != LIST_IF){
+    print_proc(window3, starting_process, starting_row);
+  }else{
+    print_proc_advanced(window3, starting_process, starting_row);
+  }
 
   return;
 }
