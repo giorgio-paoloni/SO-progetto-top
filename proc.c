@@ -75,7 +75,7 @@ void print_proc_advanced(WINDOW* window, int current_index, int start_row){
 
   char* pid_path;
   char* pid_cmdline;
-  char* pid_stat;
+  //char* pid_stat;
 
   char* ret_pid_stats;
 
@@ -126,17 +126,18 @@ void print_proc_advanced(WINDOW* window, int current_index, int start_row){
 
       if(j >= current_index){
 
-        pid_stat = (char*) malloc((sizeof(pid_path) + 1 + strlen("stat")) * sizeof(char));
+        /*pid_stat = (char*) malloc((sizeof(pid_path) + 1 + strlen("stat")) * sizeof(char));
         strcpy(pid_stat, pid_path);
         strcat(pid_stat, "/");
-        strcat(pid_stat, "stat");
+        strcat(pid_stat, "stat");*/
 
-        ret_pid_stats = print_PID_stats(pid_stat);
+
+        ret_pid_stats = print_PID_stats(pid_path);
 
         mvwprintw(window, i, 2, "%s | %s\n", proc_iter->d_name, ret_pid_stats);
         wrefresh(window);
 
-        free(pid_stat);
+        //free(pid_stat);
         free(ret_pid_stats);
         i++;
       }
@@ -154,16 +155,27 @@ void print_proc_advanced(WINDOW* window, int current_index, int start_row){
 
 char* print_PID_stats(char* path){
 
+  char* pid_stat = (char*) malloc((sizeof(path) + 1 + strlen("stat")) * sizeof(char));
+  strcpy(pid_stat, path);
+  strcat(pid_stat, "/");
+  strcat(pid_stat, "stat");
+
+  char* pid_statm = (char*) malloc((sizeof(path) + 1 + strlen("statm")) * sizeof(char));
+  strcpy(pid_statm, path);
+  strcat(pid_statm, "/");
+  strcat(pid_statm, "statm");
+
+
   FILE* file_stat;
   char* buffer_stat = (char*) malloc(BUFFER_STAT_LENGHT*sizeof(char));
   char* token;
   char* ret = (char*) malloc(RET_LENGHT*sizeof(char));
   char* command;
 
-  memset(ret,0,RET_LENGHT);
+  memset(ret, 0, RET_LENGHT);
+  memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
 
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc
-
   long unsigned int system_uptime_sec = 1;
   long long unsigned int total_time_sec = 0;
   long unsigned int user_time_clock = 0, user_time_sec = 0;
@@ -176,15 +188,19 @@ char* print_PID_stats(char* path){
   int i = 1 ;
 
 
-  if((file_stat = fopen(path, "r")) == NULL){//err
+  if((file_stat = fopen(pid_stat, "r")) == NULL){//err
     fclose(file_stat);
     free(buffer_stat);
+    free(pid_stat);
+    free(pid_statm);
     return ret;
   }
 
   if(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat) == NULL){//err
     fclose(file_stat);
     free(buffer_stat);
+    free(pid_stat);
+    free(pid_statm);
     return ret;
   }
 
@@ -198,6 +214,7 @@ char* print_PID_stats(char* path){
     //credits. https://www.baeldung.com/linux/total-process-cpu-usage (altro linguaggio ma comprensibile e riscribile in C, nella guida dice starttime e' 21, invece e' 22 da man proc)
 
     ///proc/[pid]/stat
+    ///proc/[pid]/statm
 
     //i campi sono oltre 50, non tutti ci servono
     //ricordo che sono espressi in Hertz (1/T), quindi devo ottenere la durata di T dal sistema
@@ -212,14 +229,14 @@ char* print_PID_stats(char* path){
           command[p-1] = token[p];
           p++;
         }
-        command[p] = (char) 0;
+        command[p] = '\0'; //(char) 0;
       }else{//tipo ./cmd
         command = (char*) malloc((strlen(token))*sizeof(char));
         strcpy(command, token);
       }
 
     }else if(i == 3){ //state  %c
-      state = (char) token[0];
+      state = (char) token[0]; //?
     }else if(i == 14){//utime  %lu : tempo speso dal processo in user
       user_time_clock = strtoul(token, NULL, 10); // https://pubs.opengroup.org/onlinepubs/9699919799/functions/strtoul.html
     }else if(i == 15){//stime  %lu : tempo speso dal processo in superuser (kernel)
@@ -232,11 +249,48 @@ char* print_PID_stats(char* path){
       return ret;*/
     }
 
-    //free(token);
+    token = strtok(NULL, SEPARATOR1);
+    i++;
+  }
+
+  memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
+  i = 0;
+  //https://linux.die.net/man/1/top
+  //https://www.google.com/search?q=virt+res+memory&oq=virt+res&aqs=edge.2.0i512j69i57j0i512l5j0i10i457i512j0i390.3928j0j1&sourceid=chrome&ie=UTF-8
+  //https://serverfault.com/questions/138427/what-does-virtual-memory-size-in-top-mean
+  //https://phoenixnap.com/kb/linux-commands-check-memory-usage
+
+  if((file_stat = fopen(pid_statm, "r")) == NULL){//err
+    fclose(file_stat);
+    free(buffer_stat);
+    free(pid_stat);
+    free(pid_statm);
+    return ret;
+  }
+
+  if(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat) == NULL){//err
+    fclose(file_stat);
+    free(buffer_stat);
+    free(pid_stat);
+    free(pid_statm);
+    return ret;
+  }
+
+  fclose(file_stat);
+
+  token = strtok(buffer_stat, SEPARATOR1);
+
+  while(token != NULL && i < MAX_TOKEN2){
+
+    if(i == 2){
+
+    }
 
     token = strtok(NULL, SEPARATOR1);
     i++;
   }
+
+
 
   //lavora su freq == 0 o total time == 0, per ora ho messo 1 di default per evitare divisioni per 0, pero' e' una soluzione ingenua
 
@@ -275,7 +329,7 @@ char* print_PID_stats(char* path){
   if(elapsed_time_sec != 0){
     //cpu_percentage_used_time_sec = elapsed_time_sec;
     //cpu_percentage_used_time_sec = total_time_sec;
-    cpu_percentage_used_time_sec = (double) (total_time_sec*100) / (double)elapsed_time_sec;
+    cpu_percentage_used_time_sec = (long double) (total_time_sec*100) / (long double) elapsed_time_sec;
   }else{//il processo e' partito al boot, quindi dividerei per 0 (floating point ex)
     cpu_percentage_used_time_sec = 0;
     //cpu_percentage_used_time_sec = 999;
@@ -340,64 +394,70 @@ long unsigned int get_system_uptime(){
 
 }
 
+
 int current_number_of_processes(){
-
-  int count = 1;
-
+  //problemi chiusura corretta risorse => segmentation fault
+  //credo di averli sistemati, ho anche ottimizzato un po' il codice, ancora da lavorarci
+  
   DIR* proc_dir;
-  if((proc_dir = opendir(PROC_PATH)) == NULL) return count;
+  if((proc_dir = opendir(PROC_PATH)) == NULL) return 0;
 
   dirent* proc_iter;
-  int proc_strlen = strlen(PROC_PATH);
-
-  char* pid_path;
-  char* pid_cmdline;
-
   FILE* file_cmdline;
 
-  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
-  memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
+  int count = 0;
 
+  //essendo chiamato tante volte, preferisco allocare le cose sullo stack per evitare di allocare e deallocare memoria costantemente
 
+  char pid_path[PID_PATH_LENGHT];
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT]; 
+
+  /*memset(pid_path, 0, PID_PATH_LENGHT);
+  memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+  memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);*/
 
   while((proc_iter = readdir(proc_dir)) != NULL){
+
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    //memset(pid_path, 0, PID_PATH_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
-      pid_path = (char*) malloc((proc_strlen + 1 + strlen(proc_iter->d_name)) * sizeof(char));
-      strcpy(pid_path, PROC_PATH);
+      /*strcpy(pid_path, PROC_PATH);
       strcat(pid_path, "/");
       strcat(pid_path, proc_iter->d_name);
-      //strcat(pid_path, "\0");
+      strcat(pid_path, "\0");*/
 
-      pid_cmdline = (char*) malloc((sizeof(pid_path) + 1 + CMD_LINE_LENGHT) * sizeof(char));
+      strcpy(pid_cmdline, PROC_PATH);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
 
-      strcpy(pid_cmdline, pid_path);
       strcat(pid_cmdline, "/");
       strcat(pid_cmdline, "cmdline");
+      strcat(pid_path, "\0");
 
       file_cmdline = fopen(pid_cmdline, "r");
 
       if(file_cmdline == NULL){
         fclose(file_cmdline);
-        free(pid_path);
-        free(pid_cmdline);
+        //memset(pid_path, 0, PID_PATH_LENGHT);
+        memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
         continue;
       }
 
       fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
 
       fclose(file_cmdline);
-      free(pid_path);
-      free(pid_cmdline);
 
-      if(strcmp(buffer_cmdline,"\0") == 0){
-        continue;
-      }else{
-        count++;
-        memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
-      }
+      if(strcmp(buffer_cmdline,"\0") == 0) continue;
+
+      count++;
     }
   }
+
+  closedir(proc_dir);
   return count;
 }
 

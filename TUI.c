@@ -140,11 +140,10 @@ void TUI_default_interface(){
       wrefresh(window3);
 
       print_proc(window3, starting_process, starting_process);
-      //print_proc(window3, w, i);
 
     }else if(char_input == KEY_DOWN){
 
-      starting_process = (starting_process+1)%current_number_of_processes();
+      starting_process = (starting_process+1)%current_number_of_processes();//current_number_of_process problemi
       starting_row = (starting_row+1)%max_y;
 
       wclear(window3);
@@ -693,16 +692,13 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
   wrefresh(window3);
   wrefresh(window4);
 
-  if(current_if == DEFAULT_IF || current_if == LIST_IF){
+  if(current_if == DEFAULT_IF){
     wresize(window1, 3, new_max_x);
     mvwin(window1, 0, 0);
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
-    if(current_if == DEFAULT_IF){
-      mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
-    }else{
-      mvwprintw(window1, 1, 2, "(b)back");
-    }
+
+    mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
 
     //mvwprintw(window1, 1, 2, "RESIZED"); //TEST
     wrefresh(window1);
@@ -734,7 +730,21 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
     //mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
     wrefresh(window4);
   }else if(current_if == LIST_IF){
+    //da sistemare
+    wresize(window1, 3, new_max_x);
+    mvwin(window1, 0, 0);
+    wrefresh(window1);
+    box(window1, (int) '|', (int) '-');
+    
+    mvwprintw(window1, 1, 2, "(b)back");
+    
+    wrefresh(window1);
 
+    wresize(window3, new_max_y-3, new_max_x);
+    mvwin(window3, 3, 0);
+    wrefresh(window3);
+    box(window3, (int) '|', (int) '-');
+    wrefresh(window3);
   }//etc...
 
   refresh();

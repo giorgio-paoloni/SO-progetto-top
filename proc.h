@@ -11,17 +11,24 @@
 #include <fcntl.h>
 #include <ncurses.h>
 
+#undef _POSIX_C_SOURCE //https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-closedir-close-directory
+
 //il percorso "/proc" e' usato solamente in OS Gnu-Linux, non e' portabile attraverso differenti OS come windows ecc.. quindi lo dichiaro qua in modo da poter cambiare agilmente il percorso di proc, se presente
 #define PROC_PATH "/proc"
 #define PROC_PATH_STRLEN 5
 #define PROC_UPTIME_PATH "/proc/uptime"
-#define BUFFER_CMDLINE_LENGHT 256
+#define BUFFER_CMDLINE_LENGHT 128
 #define SEPARATOR1 " \t\n"
 #define MAX_TOKEN1 23
+#define MAX_TOKEN2 5
 #define BUFFER_STAT_LENGHT 256
 #define RET_LENGHT 256
 #define CMD_LINE_LENGHT 7
 #define REFRESH_RATE 1 
+
+#define PID_PATH_LENGHT 64
+#define PID_CMDLINE_LENGHT 128
+
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 
