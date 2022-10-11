@@ -1,65 +1,67 @@
 #include "proc.h"
 
-void print_proc(WINDOW* window, int current_index, int start_row){
-
+void print_proc(WINDOW* window, int starting_index, int starting_row){
+  //ottimizzazione funzione, viene terminata prima e allocata sullo stack... TBF
+  //conto come processi "effettivi" solo quelli con cmdline presente
+  
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+  
   dirent* proc_iter;
-
-  char* pid_path;
-  char* pid_cmdline;
-
   FILE* file_cmdline;
+
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char pid_path[PID_PATH_LENGHT];
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+  //char* token;
 
   int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
 
-  mvwprintw(window, 1, 2, "| PID | pid_path | cmdline | \n");
+  int max_y = getmaxy(window);
 
-  while((proc_iter = readdir(proc_dir)) != NULL){
+  mvwprintw(window, 1, 2, "%s %c", "| PID | pid_path | cmdline |", '\0'); //https://stackoverflow.com/questions/23924497/how-to-fix-gcc-wall-embedded-0-in-format-warning
+
+  while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
+
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+    memset(pid_path, 0, PID_PATH_LENGHT);
+
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
-      pid_path = (char*) malloc((PROC_PATH_STRLEN + 1 + strlen(proc_iter->d_name)) * sizeof(char));
-      strcpy(pid_path, PROC_PATH);
-      strcat(pid_path, "/");
-      strcat(pid_path, proc_iter->d_name);
-
-      pid_cmdline = (char*) malloc((sizeof(pid_path) + 1 + CMD_LINE_LENGHT) * sizeof(char));
-
-      strcpy(pid_cmdline, pid_path);
+      strcpy(pid_cmdline, PROC_PATH);
       strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
+      strcat(pid_cmdline, "/");
+
+      strcat(pid_path, pid_cmdline);
+
       strcat(pid_cmdline, "cmdline");
+      strcat(pid_cmdline, "\0");
 
       file_cmdline = fopen(pid_cmdline, "r");
 
-      if(file_cmdline == NULL){//err
-        free(pid_path);
-        free(pid_cmdline);
+      if(file_cmdline == NULL){//err file
+        fclose(file_cmdline);
         continue;
       }
-
+      
       fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
 
       fclose(file_cmdline);
+      
 
-      if(strcmp(buffer_cmdline,"\0") == 0){
-        free(pid_path);
-        free(pid_cmdline);
-        continue;
-      }
+      if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
 
-      strcpy(buffer_cmdline+strlen(buffer_cmdline), "\0");
+      if(j >= starting_index){
 
-      if(j >= current_index){
-        mvwprintw(window, i, 2, "%s  %s  %s\n", proc_iter->d_name, pid_path, buffer_cmdline);
+        strtok(buffer_cmdline, SEPARATOR2); //evita altri caratteri scomodi di parametri nel cmdline ecc...(es: --no-sandbox --enable-crashpad)
+
+        mvwprintw(window, i, 2, "%s  %s  %s %c", proc_iter->d_name, pid_path, buffer_cmdline, '\0');
         wrefresh(window);
         i++;
       }
-
-      memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
-      free(pid_path);
-      free(pid_cmdline);
-
+      
       j++;
     }
   }
@@ -67,85 +69,70 @@ void print_proc(WINDOW* window, int current_index, int start_row){
   closedir(proc_dir);
 }
 
-void print_proc_advanced(WINDOW* window, int current_index, int start_row){
+void print_proc_advanced(WINDOW* window, int starting_index, int starting_row){
 
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+  
   dirent* proc_iter;
+  FILE* file_cmdline;
 
-  char* pid_path;
-  char* pid_cmdline;
-  //char* pid_stat;
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char pid_path[PID_PATH_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
   char* ret_pid_stats;
 
-  FILE* file_cmdline;
-  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+  int i = 3, j = 0;
 
-  int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
+  int max_y = getmaxy(window);
 
-  wclear(window);
-  wrefresh(window);
-  box(window, (int) '|', (int) '-');
+  mvwprintw(window, 1, 2, "%s %c", "| PID | command | state | priority | total time | user time | s.user time | CPU% |", '\0');
+  
+  while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
 
-  mvwprintw(window, 1, 2, "| PID | command | state | priority | total time | user time | s.user time | CPU%% | \0");
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+    memset(pid_path, 0, PID_PATH_LENGHT);
 
-  while((proc_iter = readdir(proc_dir)) != NULL){
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
-      pid_path = (char*) malloc((PROC_PATH_STRLEN + 1 + strlen(proc_iter->d_name)) * sizeof(char));
-      strcpy(pid_path, PROC_PATH);
-      strcat(pid_path, "/");
-      strcat(pid_path, proc_iter->d_name);
-
-      pid_cmdline = (char*) malloc((sizeof(pid_path) + 1 + CMD_LINE_LENGHT) * sizeof(char));
-
-      strcpy(pid_cmdline, pid_path);
+      strcpy(pid_cmdline, PROC_PATH);
       strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
+      strcat(pid_cmdline, "/");
+
+      strcat(pid_path, pid_cmdline);
+
       strcat(pid_cmdline, "cmdline");
+      strcat(pid_cmdline, "\0");
 
       file_cmdline = fopen(pid_cmdline, "r");
 
-      if(file_cmdline == NULL){//err
-        free(pid_path);
-        free(pid_cmdline);
+      if(file_cmdline == NULL){//err file
+        fclose(file_cmdline);
         continue;
       }
-
+      
       fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
 
       fclose(file_cmdline);
+      
 
-      if(strcmp(buffer_cmdline,"\0") == 0){
-        free(pid_path);
-        free(pid_cmdline);
-        continue;
-      }
+      if(strcmp(buffer_cmdline,"\0") == 0) continue;
 
-      strcpy(buffer_cmdline+strlen(buffer_cmdline), "\0");
-
-      if(j >= current_index){
-
-        /*pid_stat = (char*) malloc((sizeof(pid_path) + 1 + strlen("stat")) * sizeof(char));
-        strcpy(pid_stat, pid_path);
-        strcat(pid_stat, "/");
-        strcat(pid_stat, "stat");*/
-
+      if(j >= starting_index){
 
         ret_pid_stats = print_PID_stats(pid_path);
 
-        mvwprintw(window, i, 2, "%s | %s\n", proc_iter->d_name, ret_pid_stats);
+        mvwprintw(window, i, 2, "%s | %s %c", proc_iter->d_name, ret_pid_stats, '\0');
         wrefresh(window);
 
-        //free(pid_stat);
         free(ret_pid_stats);
+
         i++;
       }
-
-      memset(buffer_cmdline,0,BUFFER_CMDLINE_LENGHT);
-      free(pid_path);
-      free(pid_cmdline);
-
+      
       j++;
     }
   }
@@ -341,7 +328,7 @@ char* print_PID_stats(char* path){
   /*strcpy(ret, command);
   return ret;*/
 
-  sprintf(ret, "%s | %c | %ld | %llu | %lu | %lu | %0.3f%%", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec );
+  sprintf(ret, "%s | %c | %ld | %llu | %lu | %lu | %0.3f%s", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, "%" );
 
   /*mvwprintw(window, y, 10, "Tot:%lu Usr:%lu Ker:%lu CPUper:%lu\n", total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec);
   wrefresh(window);*/
@@ -395,9 +382,7 @@ long unsigned int get_system_uptime(){
 }
 
 
-int current_number_of_processes(){
-  //problemi chiusura corretta risorse => segmentation fault
-  //credo di averli sistemati, ho anche ottimizzato un po' il codice, ancora da lavorarci
+int current_number_of_processes(){ //testa memory leak ecc
   
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return 0;
@@ -409,41 +394,28 @@ int current_number_of_processes(){
 
   //essendo chiamato tante volte, preferisco allocare le cose sullo stack per evitare di allocare e deallocare memoria costantemente
 
-  char pid_path[PID_PATH_LENGHT];
   char pid_cmdline[PID_CMDLINE_LENGHT];
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT]; 
-
-  /*memset(pid_path, 0, PID_PATH_LENGHT);
-  memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
-  memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);*/
 
   while((proc_iter = readdir(proc_dir)) != NULL){
 
     memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
-    //memset(pid_path, 0, PID_PATH_LENGHT);
     memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
 
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
-      /*strcpy(pid_path, PROC_PATH);
-      strcat(pid_path, "/");
-      strcat(pid_path, proc_iter->d_name);
-      strcat(pid_path, "\0");*/
-
       strcpy(pid_cmdline, PROC_PATH);
       strcat(pid_cmdline, "/");
       strcat(pid_cmdline, proc_iter->d_name);
-
       strcat(pid_cmdline, "/");
       strcat(pid_cmdline, "cmdline");
-      strcat(pid_path, "\0");
+      strcat(pid_cmdline, "\0");
 
       file_cmdline = fopen(pid_cmdline, "r");
 
       if(file_cmdline == NULL){
         fclose(file_cmdline);
-        //memset(pid_path, 0, PID_PATH_LENGHT);
-        memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+        //memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
         continue;
       }
 
@@ -452,7 +424,6 @@ int current_number_of_processes(){
       fclose(file_cmdline);
 
       if(strcmp(buffer_cmdline,"\0") == 0) continue;
-
       count++;
     }
   }

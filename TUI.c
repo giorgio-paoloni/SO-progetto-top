@@ -241,7 +241,7 @@ void TUI_list_interface(){
 
     if(is_term_resized(max_y, max_x)){
       resize_term_custom();
-      print_proc(window3, starting_process, starting_row);
+      print_proc_advanced(window3, starting_process, starting_row);
       getmaxyx(stdscr, max_y, max_x);
     }
 
@@ -736,7 +736,7 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
     
-    mvwprintw(window1, 1, 2, "(b)back");
+    mvwprintw(window1, 1, 2, "%s", "(b)back");
     
     wrefresh(window1);
 

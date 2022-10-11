@@ -19,6 +19,7 @@
 #define PROC_UPTIME_PATH "/proc/uptime"
 #define BUFFER_CMDLINE_LENGHT 128
 #define SEPARATOR1 " \t\n"
+#define SEPARATOR2 " \t\n:"
 #define MAX_TOKEN1 23
 #define MAX_TOKEN2 5
 #define BUFFER_STAT_LENGHT 256
@@ -32,8 +33,8 @@
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 
-void print_proc(WINDOW* window, int current_index, int start_row);
-void print_proc_advanced(WINDOW* window, int current_index, int start_row);
+void print_proc(WINDOW* window, int starting_index, int starting_row);
+void print_proc_advanced(WINDOW* window, int starting_index, int starting_row);
 
 //utili
 long unsigned int get_system_uptime();
