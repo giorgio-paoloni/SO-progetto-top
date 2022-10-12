@@ -187,7 +187,7 @@ void TUI_help_interface(){
   wclear(window1);
   wrefresh(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
   wrefresh(window1);
 
   wclear(window3);
@@ -215,7 +215,7 @@ void TUI_list_interface(){
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
   wrefresh(window1);
 
   wclear(window2);
@@ -293,7 +293,7 @@ void TUI_stats_interface(){
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
 
   //wclear(window2);
   //wrefresh(window2);
@@ -329,7 +329,7 @@ void TUI_find_interface(){
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
 
   wclear(window3);
   wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
@@ -358,18 +358,12 @@ void TUI_find_interface(){
   char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
 
   int j = 0;
-  //i = indica la riga della finestra ncurses dove stampare
-  //j = indica le celle occupate dell'array window_input
-  //w = indica il processo da cui iniziare a stampare
-
+  
   memset(window_input,0,WINDOW_INPUT_LENGHT);
 
   mvwprintw(window4, 1, 2, "PID/Processo: (Digita il PID o il nome del processo da cercare, invio per confermare)");
   wrefresh(window4);
 
-  //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
-
-  nodelay(stdscr, false);
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
@@ -489,7 +483,7 @@ void TUI_kill_sleep_resume_interface(){
   
   wclear(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "(b)back");
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
 
   wclear(window3);
   wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
@@ -714,7 +708,7 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
     mvwin(window1, 0, 0);
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
-    mvwprintw(window1, 1, 2, "(b)back");
+    mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     wrefresh(window1);
 
     wresize(window3, new_max_y-6, new_max_x);
@@ -736,7 +730,7 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
     
-    mvwprintw(window1, 1, 2, "%s", "(b)back");
+    mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     
     wrefresh(window1);
 

@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <sys/sysinfo.h>//https://man7.org/linux/man-pages/man2/sysinfo.2.html, per info sulla ram
 #include <dirent.h> //https://man7.org/linux/man-pages/man3/opendir.3.html, utile per manipolare cartelle in C
 #include <string.h>
 #include <fcntl.h>
@@ -20,16 +21,23 @@
 #define BUFFER_CMDLINE_LENGHT 128
 #define SEPARATOR1 " \t\n"
 #define SEPARATOR2 " \t\n:"
-#define MAX_TOKEN1 23
+#define MAX_TOKEN1 25
 #define MAX_TOKEN2 5
 #define BUFFER_STAT_LENGHT 256
+#define BUFFER_STATM_LENGHT 256
 #define RET_LENGHT 256
 #define CMD_LINE_LENGHT 7
 #define REFRESH_RATE 1 
 
 #define PID_PATH_LENGHT 64
 #define PID_CMDLINE_LENGHT 128
+#define PID_STAT_LENGHT 128
+#define PID_STATM_LENGHT 128
 
+#define COMMAND_LENGHT 64
+
+#define PRINT_PROC 0
+#define PRINT_PROC_ADVANCED 1
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 
@@ -41,5 +49,8 @@ long unsigned int get_system_uptime();
 char* print_PID_stats(char* path);
 int current_number_of_processes();
 int is_pid(char* name);
+void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function);
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
+
+//man top: https://man7.org/linux/man-pages/man1/top.1.html
