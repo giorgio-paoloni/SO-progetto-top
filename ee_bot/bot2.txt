@@ -1,0 +1,20 @@
+                                                          
+                                                             
+BBBBBBBBBBBBBBBBB        OOOOOOOOO     TTTTTTTTTTTTTTTTTTTTTTT
+B::::::::::::::::B     OO:::::::::OO   T:::::::::::::::::::::T
+B::::::BBBBBB:::::B  OO:::::::::::::OO T:::::::::::::::::::::T
+BB:::::B     B:::::BO:::::::OOO:::::::OT:::::TT:::::::TT:::::T
+  B::::B     B:::::BO::::::O   O::::::OTTTTTT  T:::::T  TTTTTT
+  B::::B     B:::::BO:::::O     O:::::O        T:::::T        
+  B::::BBBBBB:::::B O:::::O     O:::::O        T:::::T        
+  B:::::::::::::BB  O:::::O     O:::::O        T:::::T        
+  B::::BBBBBB:::::B O:::::O     O:::::O        T:::::T        
+  B::::B     B:::::BO:::::O     O:::::O        T:::::T        
+  B::::B     B:::::BO:::::O     O:::::O        T:::::T        
+  B::::B     B:::::BO::::::O   O::::::O        T:::::T        
+BB:::::BBBBBB::::::BO:::::::OOO:::::::O      TT:::::::TT      
+B:::::::::::::::::B  OO:::::::::::::OO       T:::::::::T      
+B::::::::::::::::B     OO:::::::::OO         T:::::::::T      
+BBBBBBBBBBBBBBBBB        OOOOOOOOO           TTTTTTTTTTT      
+                                                              
+                Un'idea di Giorgio Paoloni.                                                                                                                         

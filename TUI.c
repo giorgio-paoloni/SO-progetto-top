@@ -11,7 +11,7 @@ int starting_row = 2, starting_process = 0;
 
 int max_y, max_x;
 
-int current_if = DEFAULT_IF;
+int current_if =  DEFAULT_IF;
 
 void TUI_default_interface(){
 
@@ -113,6 +113,8 @@ void TUI_default_interface(){
 
     }else if(char_input == (int) 'e' || char_input == (int) 'E'){//easter-egg, vorrei implementare un qualcosa alla sl https://github.com/mtoyoda/sl
       //TBD
+      TUI_easteregg_inferface();
+      //sleep(5);
       reset_to_default_interface();
     }else if(char_input == (int) 'f' || char_input == (int) 'F'){
       //TUI_find_interface();
@@ -313,9 +315,49 @@ void TUI_stats_interface(){
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B') ){
     char_input = getch();
-    if(char_input != ERR) print_stats(window3, starting_process, starting_row);
+    /*if(char_input != ERR)*/ print_stats(window3, starting_process, starting_row);
+
   }
 
+  return;
+}
+
+void TUI_easteregg_inferface(){
+  //credits. https://patorjk.com/software/taag/#p=display&f=Graffiti&t=Type%20Something%20
+
+  current_if = EASTEREGG_IF;
+
+  wclear(window1);
+  box(window1, (int)'|', (int)'-');
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+  wrefresh(window1);
+
+  /*wclear(window3);
+  //box(window3, (int)'|', (int)'-');
+  wrefresh(window3);*/
+  int char_input;
+
+  int i = 0;
+  
+
+  while(1){
+
+    if(is_term_resized(max_y, max_x)){
+      resize_term_custom();
+      getmaxyx(stdscr, max_y, max_x);
+    }
+
+    wclear(window3);
+    wrefresh(window3);
+
+    print_easteregg(i);
+    i = (i+1) % MAX_TXT;
+
+    char_input = getch();
+
+    if (char_input == (int)'b' || char_input == (int)'B') break; // l'utente ha inserito q, cioe' QUIT  
+
+  }
   return;
 }
 
@@ -452,9 +494,9 @@ void TUI_find_interface(){
 
 void reset_to_default_interface(){
 
-  current_if = DEFAULT_IF;
+  //current_if = DEFAULT_IF;//per le chiamate asincrone di timer interrupt ecc
 
-  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
+  mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats", '\0');
   wrefresh(window1);
 
   wclear(window4);
@@ -731,7 +773,7 @@ void resize_term_custom(){
 }
 
 void refresh_UI(){ 
-  if(current_if == HELP_IF) return;
+  if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
   //devo differenziare tra le le UI chiamanti
   wclear(window3);
   wrefresh(window3);
@@ -754,4 +796,46 @@ void signal_handler(int sig){
   refresh_UI();
   alarm(REFRESH_RATE);
   //return;
+}
+
+void print_easteregg(int i){
+  //snippet credits. https://stackoverflow.com/questions/3463426/in-c-how-should-i-read-a-text-file-and-print-all-strings
+  //copiato e modificato
+  //devo farlo con dei file perché gli ASCII-TEXT-ART stampati sono multilinea non riesco a definirli come macro define
+  //si è uno spreco, ma questa parte di codice non verrà chiamata sempre
+
+  char val[VAL_LENGHT];
+  char buf[BUF_LENGHT1];
+  char EE_BOT_full_path[CUSTOM_LENGHT1];
+
+  memset(EE_BOT_full_path, 0, CUSTOM_LENGHT1);
+  memset(buf, 0, BUF_LENGHT1);
+  memset(val, 0, VAL_LENGHT);
+
+  sprintf(val, "%d", i);
+
+  strcat(EE_BOT_full_path, EE_BOT_PATH);
+  strcat(EE_BOT_full_path, "/");
+  strcat(EE_BOT_full_path, "bot");
+  strcat(EE_BOT_full_path, val);
+  strcat(EE_BOT_full_path, ".txt");
+  strcat(EE_BOT_full_path, "\0");
+
+  /*mvwprintw(window3, 1, 1, "%s %c", EE_BOT_full_path, '\0');
+  wrefresh(window3);
+  return;*/
+  
+  FILE *file = NULL;
+  size_t nread = 0;
+
+  file = fopen(EE_BOT_full_path, "r");
+  if(!file) return;
+
+  while ((nread = fread(buf, 1, sizeof(buf), file)) > 0){
+    mvwprintw(window3, 1, 1, "%s %c", buf, '\0');
+    wrefresh(window3);
+  }
+
+  fclose(file);
+
 }
