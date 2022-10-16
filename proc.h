@@ -50,6 +50,7 @@ char* print_PID_stats(char* path);
 int current_number_of_processes();
 int is_pid(char* name);
 void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function);
+void print_stats(WINDOW *window, int starting_index, int starting_row);
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 

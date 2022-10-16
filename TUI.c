@@ -7,12 +7,8 @@ WINDOW* window4;
 
 struct sigaction signal_handler_struct, signal_handler_struct_old;
 
-
 int starting_row = 2, starting_process = 0;
-//i = starting_row = indica la riga della finestra ncurses dove stampare
-//w = staring_process= indica il processo da cui iniziare a stampare
 
-//int y, x;
 int max_y, max_x;
 
 int current_if = DEFAULT_IF;
@@ -53,7 +49,7 @@ void TUI_default_interface(){
   //box(window2, (int) '|', (int) '-');%d
   box(window3, (int) '|', (int) '-');
 
-  mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
+  mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats", '\0');
   //mvwprintw(window1, 2, 2, "R = %d C = %d", max_y, max_x);
 
   wclear(window4);
@@ -62,9 +58,10 @@ void TUI_default_interface(){
   wrefresh(window1);
   wrefresh(window3);
 
-  nodelay(stdscr, true);//per non blocking getch, credits. https://gist.github.com/mfcworks/3a32513f26bdc58fd3bd, devo rileggermi bene il man
+  //nodelay(stdscr, true);//per non blocking getch, credits. https://gist.github.com/mfcworks/3a32513f26bdc58fd3bd, devo rileggermi bene il man
+  nodelay(stdscr, false);
   keypad(stdscr, true);
-
+  
   starting_row = 2, starting_process = 0;
   //i = 2, w = 0; //w tiene il conto del numero dei processi letti, mentre i tiene conto della riga dove stampare nella finestra
 
@@ -103,7 +100,7 @@ void TUI_default_interface(){
       reset_to_default_interface();
 
     }else if(char_input == (int) 's' || char_input == (int) 's'){
-      //TUI_stats_interface();
+      TUI_stats_interface();
       reset_to_default_interface();
 
     }else if(char_input == (int) 'z' || char_input == (int) 'Z'){
@@ -156,7 +153,7 @@ void TUI_default_interface(){
 
   }
 
-  nodelay(stdscr, true);
+  //nodelay(stdscr, false);
   keypad(stdscr, false);
 
   endwin();//ncurses, dealloca le finestre
@@ -301,8 +298,8 @@ void TUI_stats_interface(){
   wclear(window3);
   wrefresh(window3);
 
-  mvwin(window3, 6, 0);
-  wresize(window3, max_y-6, max_x);
+  mvwin(window3, 3, 0);
+  wresize(window3, max_y-3, max_x);
   box(window3, (int) '|', (int) '-');
 
   wrefresh(window1);
@@ -316,6 +313,7 @@ void TUI_stats_interface(){
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B') ){
     char_input = getch();
+    if(char_input != ERR) print_stats(window3, starting_process, starting_row);
   }
 
   return;
@@ -431,7 +429,7 @@ void TUI_find_interface(){
     j++;
   }
 
-  nodelay(stdscr, true);
+  //nodelay(stdscr, true);
 
   if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     /*if(kill_PID(atoi(window_input)) == -1){//err
@@ -523,10 +521,6 @@ void TUI_kill_sleep_resume_interface(){
   }
   
   wrefresh(window4);
-
-  //questo meccanismo mi permette di stampare IRT nella window4 i caratteri digitati, nodelay(.., false) mi rende la getch() bloccante
-
-  //nodelay(stdscr, false); //DISABILITATA TEMPORANEAMENTE, CONTROLLA
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
@@ -620,8 +614,6 @@ void TUI_kill_sleep_resume_interface(){
     j++;
   }
 
-  //nodelay(stdscr, true);
-
   if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     if(current_if == KILL_IF){
 
@@ -662,17 +654,9 @@ void TUI_kill_sleep_resume_interface(){
 
 }
 
-void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
-  //NB:NON FUNZIONA BENE CON RIMENSIONAMENTI DEGENERI, ES: 2x2px, la finestra deve essere un minimo grande per rappresentare le info
-  //dimensioni finestre
-  /*
-  WINDOW* window1 = newwin(3, max_x, 0, 0); //info & commands window
-  WINDOW* window2 = NULL;// newwin(8, max_x, 3, 0); //stats window, alla fine ho deciso di implementarla su un'altra schermata, rimane perche' altrimenti dovrei shiftare le finestre di -1 e non voglio creare errori.
-  WINDOW* window3 = newwin(max_y-3, max_x, 3, 0);//process list window
-  WINDOW* window4 = newwin(3, max_x, 3, 0);;//finestra input testuale visibile, non sempre utilizzata
-  */
-
-  //per ora ci sono dei glitch grafici, non capisco...
+void resize_term_custom(){ 
+  //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
+  
   int new_max_y, new_max_x;
   getmaxyx(stdscr, new_max_y, new_max_x);
 
@@ -692,7 +676,7 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
 
-    mvwprintw(window1, 1, 2, "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats");
+    mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats", '\0');
 
     //mvwprintw(window1, 1, 2, "RESIZED"); //TEST
     wrefresh(window1);
@@ -729,6 +713,7 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
     mvwin(window1, 0, 0);
     wrefresh(window1);
     box(window1, (int) '|', (int) '-');
+    wrefresh(window1);
     
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     
@@ -745,14 +730,16 @@ void resize_term_custom(){ //c'è resizeterm, ma viene consigliato in caso di la
   
 }
 
-
 void refresh_UI(){ 
+  if(current_if == HELP_IF) return;
   //devo differenziare tra le le UI chiamanti
   wclear(window3);
   wrefresh(window3);
   box(window3, (int) '|', (int) '-');
 
-  if(current_if != LIST_IF){
+  if(current_if == STATS_IF){
+    print_stats(window3, starting_process, starting_row);
+  }else if(current_if != LIST_IF){
     print_proc(window3, starting_process, starting_row);
   }else{
     print_proc_advanced(window3, starting_process, starting_row);

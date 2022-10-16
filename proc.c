@@ -1,7 +1,5 @@
 #include "proc.h"
 
-//struct sysinfo* system_information = NULL;
-
 long page_size = -1 ;// = sysconf(_SC_PAGESIZE);//https://man7.org/linux/man-pages/man2/getpagesize.2.html
 //Portable applications should employ sysconf(_Ssysinfo(system_information);sysinfo(system_information);C_PAGESIZE) instead of getpagesize():
 
@@ -14,50 +12,58 @@ void print_proc_advanced(WINDOW* window, int starting_index, int starting_row){
 }
 
 char* print_PID_stats(char* path){
+  //da sistemare le varie metriche...
+
+  // PID USER PR  NI VIRT RES SHR S %CPU %MEM TIME+ COMMAND
 
   FILE* file_stat;
-  FILE* file_statm;
+  //FILE* file_statm;
 
   char buffer_stat[BUFFER_STAT_LENGHT];
-  char buffer_statm[BUFFER_STATM_LENGHT];
+  //char buffer_statm[BUFFER_STATM_LENGHT];
 
   char pid_stat[PID_STAT_LENGHT];
-  char pid_statm[PID_STATM_LENGHT];
+  //char pid_statm[PID_STATM_LENGHT];
 
   char command[COMMAND_LENGHT];
-  
 
   char* token;
-  char* ret;//= (char*) malloc(RET_LENGHT*sizeof(char));
+  char* ret;
+
+  int i = 1;
 
   //INFO
   char state;
-  long int priority = 0;
+  long int priority;
 
   //CPU
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc, frequenza variabile?
-  long unsigned int system_uptime_sec = 1;
-  long long unsigned int total_time_sec = 0;
-  long unsigned int user_time_clock = 0, user_time_sec = 0;
-  long unsigned int superuser_time_clock = 0, superuser_time_sec = 0;
-  long long unsigned int start_time_clock = 0, start_time_sec = 0;
-  long unsigned int elapsed_time_sec = 1;
-  double cpu_percentage_used_time_sec = 0;
+  //clock
+  long unsigned int user_time_clock;
+  long unsigned int superuser_time_clock;
+  long long unsigned int start_time_clock;
+  //sec
+  double elapsed_time_sec;
+  double system_uptime_sec;
+  double cpu_percentage_used_time_sec;
+  double superuser_time_sec;
+  double user_time_sec;
+  double total_time_sec;
+
+  double start_time_sec;
 
   //MEM
   struct sysinfo system_information;
   if(sysinfo(&system_information) == -1) return NULL;
 
-  unsigned long total_physical_memory = system_information.totalram;
-  long rss = 0;
-  long long used_physical_memory = 0;
-
-  double used_physical_memory_percentage = 0;
-
-  int i = 1 ;
+  unsigned long total_physical_memory = system_information.totalram / 1024; //ritorna in bytes, converto in KB
+  long rss;
+  long long used_physical_memory;
+  double used_physical_memory_percentage;
+  long unsigned vm_size;
 
   if(page_size == -1){
-    page_size = sysconf(_SC_PAGESIZE)/1000;
+    page_size = sysconf(_SC_PAGESIZE)/1024; //mostrata in KB
   }
 
   strcpy(pid_stat, path);
@@ -65,38 +71,36 @@ char* print_PID_stats(char* path){
   strcat(pid_stat, "stat");
   strcat(pid_stat, "\0");
 
-  strcpy(pid_statm, path);
-  strcat(pid_statm, "/");
-  strcat(pid_statm, "statm");
-  strcat(pid_statm, "\0");
+  //strcpy(pid_statm, path);
+  //strcat(pid_statm, "/");
+  //strcat(pid_statm, "statm");
+  //strcat(pid_statm, "\0");
   
   memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
-  memset(buffer_statm, 0, BUFFER_STATM_LENGHT);
+  //memset(buffer_statm, 0, BUFFER_STATM_LENGHT);
   
   if((file_stat = fopen(pid_stat, "r")) == NULL){//err
-    //fclose(file_stat); //non è stato aperto tecnicamente
     return NULL;
   }
 
-  if((file_statm = fopen(pid_statm, "r")) == NULL){//err
-    //fclose(file_statm);//non è stato aperto
+  /*if((file_statm = fopen(pid_statm, "r")) == NULL){//err
     return NULL;
-  }
+  }*/
 
   if(fgets(buffer_stat, BUFFER_STAT_LENGHT,file_stat) == NULL){//err
     fclose(file_stat);
-    fclose(file_statm);
+    //fclose(file_statm);
     return NULL;
   }
 
-  if(fgets(buffer_statm, BUFFER_STATM_LENGHT,file_statm) == NULL){//err
+  /*if(fgets(buffer_statm, BUFFER_STATM_LENGHT,file_statm) == NULL){//err
     fclose(file_stat);
     fclose(file_statm);
     return NULL;
-  }
+  }*/
 
   fclose(file_stat);
-  fclose(file_statm);
+  //fclose(file_statm);
 
   ret = (char*) malloc(RET_LENGHT*sizeof(char));
 
@@ -104,6 +108,9 @@ char* print_PID_stats(char* path){
   memset(command, 0, COMMAND_LENGHT);
 
   token = strtok(buffer_stat, SEPARATOR1);
+
+  // cosa mostra top: PID USER PR NI VIRT RES SHR S %CPU %MEM TIME+ COMMAND
+  //nb: le metriche possono scostare leggermente tra di loro perché ci sono vari modi di leggere i campi, più o meno precisi e dipende anche come vengono calcolate le operazioni
 
 
   while(token != NULL && i < MAX_TOKEN1){//strtok
@@ -141,6 +148,8 @@ char* print_PID_stats(char* path){
       priority = strtol(token, NULL, 10);
     }else if(i == 22){//starttime  %llu : tempo di avvio del processo a partire dal boot
       start_time_clock = strtoull(token, NULL, 10);
+    }else if(i == 23){//vsize  %lu
+      vm_size = strtoul(token, NULL, 10) / 1000 ; //e' segnato in bytes, converto in KB
     }else if(i == 24){//(24) rss  %ld 
       rss = strtol(token, NULL, 10);
       used_physical_memory = rss * page_size; //KB RES 
@@ -160,7 +169,7 @@ char* print_PID_stats(char* path){
   //https://www.ibm.com/docs/en/aix/7.2?topic=usage-memory-determination-ps-command
   //https://stackoverflow.com/questions/1558402/memory-usage-of-current-process-in-c
 
-  token = NULL;// strtok(buffer_statm, SEPARATOR1);
+  //token = NULL;// strtok(buffer_statm, SEPARATOR1);
 
   /*while(token != NULL && i < MAX_TOKEN2){
     token = strtok(NULL, SEPARATOR1);
@@ -176,29 +185,32 @@ char* print_PID_stats(char* path){
   //per ora ho deciso di troncare le divisioni con la virgola.
 
   //lavora su freq == 0 o total time == 0, per ora ho messo 1 di default per evitare divisioni per 0, pero' e' una soluzione ingenua
-  if(frequency == 0) frequency = 1; //err, divisione per 0
+  if(frequency == 0) return NULL; //err, divisione per 0
 
-  user_time_sec = user_time_clock / frequency;
-  superuser_time_sec = superuser_time_clock / frequency;
-  start_time_sec = start_time_clock / frequency;
-  total_time_sec = (long long unsigned) (user_time_sec + superuser_time_sec); //overflow somma?
+  user_time_sec = (double) user_time_clock / (double) frequency;
+  superuser_time_sec = (double) superuser_time_clock / (double) frequency;
+  start_time_sec = (double) start_time_clock / (double) frequency;
+  total_time_sec = (double) (user_time_sec + superuser_time_sec); // overflow somma?
 
   //if(total_time_sec == 0) total_time_sec = 1; //err, questo processo non ha tempo(?)
 
-  system_uptime_sec = get_system_uptime();
+  system_uptime_sec = (double)get_system_uptime();
+  if(system_uptime_sec == 0)return NULL; //è una casistica impossibile(?)
 
-  /*if(system_uptime_sec == 0){ //è una casistica impossibile(?)
-  }*/
+  elapsed_time_sec = (double) system_uptime_sec - (double) start_time_sec;
+  //il tempo attuale-tempo di avvio
 
-  elapsed_time_sec = system_uptime_sec - start_time_sec;
+  //? tot : elaps = x : 100
 
-  if(elapsed_time_sec != 0){
-    cpu_percentage_used_time_sec = (long double) (total_time_sec*100) / (long double) elapsed_time_sec;
-  }else{//il processo e' partito ESATTAMENTE al boot, quindi dividerei per 0 (floating point execpt)
-    cpu_percentage_used_time_sec = 0;
-  }
+  //if(elapsed_time_sec != 0){
+    cpu_percentage_used_time_sec = (double) (total_time_sec*100) / (double) elapsed_time_sec;
+    if(cpu_percentage_used_time_sec > 100) cpu_percentage_used_time_sec = 100;//test
+  //}else{//il processo e' partito ESATTAMENTE al boot, quindi dividerei per 0 (floating point execpt)
+    //cpu_percentage_used_time_sec = 0;
+  //}
 
-  sprintf(ret, "%s | %c | %ld | %llu | %lu | %lu | %0.3f %% | %lld  %0.3f%% %c  ", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, used_physical_memory, used_physical_memory_percentage,'\0' );
+  sprintf(ret, "%s %c %ld %0.2f %0.2f %0.2f %0.2f%% %0.2f%% %lld %ld %c", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, used_physical_memory_percentage, used_physical_memory, vm_size, '\0');
+
   return ret;
 }
 
@@ -329,7 +341,8 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
   if(calling_function == PRINT_PROC){
     mvwprintw(window, 1, 2, "%s %c", "| PID | pid_path | cmdline |", '\0'); //https://stackoverflow.com/questions/23924497/how-to-fix-gcc-wall-embedded-0-in-format-warning
   }else{
-    mvwprintw(window, 1, 2, "%s %c", "| PID | command | state | priority | total time | user time | s.user time | CPU% |", '\0');
+
+    mvwprintw(window, 1, 2, "%s %c", "PID CMD S PR TT-s UT-s SU-s %CPU %MEM RES-KB VIRT-KB", '\0');
   }
 
   while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
@@ -373,7 +386,7 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
         }else{
           
           ret_pid_stats = print_PID_stats(pid_path);
-          mvwprintw(window, i, 2, "%s | %s %c", proc_iter->d_name, ret_pid_stats, '\0');
+          mvwprintw(window, i, 2, "%s %s %c", proc_iter->d_name, ret_pid_stats, '\0');
           wrefresh(window);
           free(ret_pid_stats);
           
@@ -389,5 +402,13 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
   closedir(proc_dir);
 }
 
+void print_stats(WINDOW *window, int starting_index, int starting_row){
+  wclear(window);
+  box(window, (int)'|', (int)'-');
+  mvwprintw(window, 1, 2, "STATS CUMULATIVE DI SISTEMA: %c", '\0');
+  wrefresh(window);
 
-//"fortunatamente" non essendo un programma che deve girare su un sistema con poca ram posso permettermi questi sprechi di memoria.
+  return;
+}
+
+    //"fortunatamente" non essendo un programma che deve girare su un sistema con poca ram posso permettermi questi sprechi di memoria.
