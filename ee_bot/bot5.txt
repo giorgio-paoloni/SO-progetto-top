@@ -1,14 +1,14 @@
 
 
- ,ggggggggggg,     _,gggggg,_      ,ggggggggggggggg
-dP"""88""""""Y8, ,d8P""d8P"Y8b,   dP""""""88"""""""
-Yb,  88      `8b,d8'   Y8   "8b,dPYb,_    88       
- `"  88      ,8Pd8'    `Ybaaad88P' `""    88       
-     88aaaad8P" 8P       `""""Y8          88       
-     88""""Y8ba 8b            d8          88       
-     88      `8bY8,          ,8P          88       
-     88      ,8P`Y8,        ,8P'    gg,   88       
-     88_____,d8' `Y8b,,__,,d8P'      "Yb,,8P       
-    88888888P"     `"Y8888P"'          "Y8P'       
-                                                                    		
-	  Un'idea di Giorgio Paoloni.                          		
+					 ,ggggggggggg,     _,gggggg,_      ,ggggggggggggggg
+					dP"""88""""""Y8, ,d8P""d8P"Y8b,   dP""""""88"""""""
+					Yb,  88      `8b,d8'   Y8   "8b,dPYb,_    88       
+					 `"  88      ,8Pd8'    `Ybaaad88P' `""    88       
+					     88aaaad8P" 8P       `""""Y8          88       
+					     88""""Y8ba 8b            d8          88       
+					     88      `8bY8,          ,8P          88       
+					     88      ,8P`Y8,        ,8P'    gg,   88       
+					     88_____,d8' `Y8b,,__,,d8P'      "Yb,,8P       
+					    88888888P"     `"Y8888P"'          "Y8P'       
+										                            		
+						  Un'idea di Giorgio Paoloni.                          		

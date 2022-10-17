@@ -5,6 +5,8 @@ WINDOW* window2;
 WINDOW* window3;
 WINDOW* window4;
 
+int has_colors_bool = 0;
+
 struct sigaction signal_handler_struct, signal_handler_struct_old;
 
 int starting_row = 2, starting_process = 0;
@@ -24,15 +26,17 @@ void TUI_default_interface(){
   if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) perror("errore installazione sigaction!");
 
   int char_input;
+  
 
   initscr(); //ncurses, inizializza cose...
+  if ((has_colors_bool = has_colors())) start_color(); // https://linux.die.net/man/3/start_color
   raw(); //ncurses, disabilita il line buffering dello stdin e segnali come CTRL-C
   noecho();//ncurses, disabilita il print su STDOUT di getch
   curs_set(0); //https://stackoverflow.com/questions/19614156/c-curses-remove-blinking-cursor-from-game, sempre funzione di curses / ncurses
   keypad(stdscr, true); //abilita tasti particolari come FNn o backspace ecc
   //credits. https://stackoverflow.com/questions/27200597/c-ncurses-key-backspace-not-working
-
   //getyx(stdscr, y, x);//stdscr e' di ncurses, la funzione ottiene la posizione del cursore nella finestra (0,0)
+  use_default_colors();// https://invisible-island.net/ncurses/man/default_colors.3x.html
   getmaxyx(stdscr, max_y, max_x);//ottiene la dimensione massima attuale della finestra di terminale
 
   //questi 2 valori possono essere utili per avere delle posizioni e dimensioni relative alla finestra di terminale, "responsive design",...
@@ -324,7 +328,7 @@ void TUI_stats_interface(){
 
 void TUI_easteregg_inferface(){
   //credits. https://patorjk.com/software/taag/#p=display&f=Graffiti&t=Type%20Something%20
-
+  //informati sul range dei colori permessi dal terminale... per ora è 256
   current_if = EASTEREGG_IF;
 
   wclear(window1);
@@ -332,16 +336,14 @@ void TUI_easteregg_inferface(){
   mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
   wrefresh(window1);
 
-  /*wclear(window3);
-  //box(window3, (int)'|', (int)'-');
-  wrefresh(window3);*/
   int char_input;
 
-  int i = 0;
-  
+  int i ;
 
   while(1){
 
+    i = rand() % MAX_TXT;
+  
     if(is_term_resized(max_y, max_x)){
       resize_term_custom();
       getmaxyx(stdscr, max_y, max_x);
@@ -350,14 +352,23 @@ void TUI_easteregg_inferface(){
     wclear(window3);
     wrefresh(window3);
 
+    if (has_colors_bool){
+      init_pair(1, (rand() % MAX_COLORS), -1); //-1,-1 indica i colori default del terminale
+      wattron(window3, COLOR_PAIR(1));
+    }
+
     print_easteregg(i);
-    i = (i+1) % MAX_TXT;
 
-    char_input = getch();
+    char_input = getch();//a getch è bloccante, ma andando a vedere sul man se riceve un segnale timer è come se avessi inserito qualcosa (ERR) e va alla riga successiva di esecuzione, ricordo che c'è un timer che ogni 1s lancia il segnale quindi ogni 1s la getch restituisce ERR se non è inserito niente
+    
 
-    if (char_input == (int)'b' || char_input == (int)'B') break; // l'utente ha inserito q, cioe' QUIT  
+    if (char_input == (int)'b' || char_input == (int)'B') break;
 
   }
+
+
+  if(has_colors_bool) wattroff(window3, COLOR_PAIR(1));
+
   return;
 }
 
@@ -749,6 +760,12 @@ void resize_term_custom(){
     box(window4, (int) '|', (int) '-');
     //mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
     wrefresh(window4);
+  }else if(current_if == EASTEREGG_IF){
+
+    box(window1, (int)'|', (int)'-');
+    mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+    wrefresh(window1);
+
   }else if(current_if == LIST_IF){
     //da sistemare
     wresize(window1, 3, new_max_x);
@@ -820,10 +837,6 @@ void print_easteregg(int i){
   strcat(EE_BOT_full_path, val);
   strcat(EE_BOT_full_path, ".txt");
   strcat(EE_BOT_full_path, "\0");
-
-  /*mvwprintw(window3, 1, 1, "%s %c", EE_BOT_full_path, '\0');
-  wrefresh(window3);
-  return;*/
   
   FILE *file = NULL;
   size_t nread = 0;
