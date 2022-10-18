@@ -298,9 +298,6 @@ void TUI_stats_interface(){
   box(window1, (int) '|', (int) '-');
   mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
 
-  //wclear(window2);
-  //wrefresh(window2);
-
   wclear(window3);
   wrefresh(window3);
 
@@ -309,7 +306,6 @@ void TUI_stats_interface(){
   box(window3, (int) '|', (int) '-');
 
   wrefresh(window1);
-  //wrefresh(window2);
   wrefresh(window3);
   wrefresh(window4);
 

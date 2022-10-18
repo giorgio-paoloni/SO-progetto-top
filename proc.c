@@ -1,5 +1,7 @@
 #include "proc.h"
 
+long number_of_processors = -1;
+
 long page_size = -1 ;// = sysconf(_SC_PAGESIZE);//https://man7.org/linux/man-pages/man2/getpagesize.2.html
 //Portable applications should employ sysconf(_Ssysinfo(system_information);sysinfo(system_information);C_PAGESIZE) instead of getpagesize():
 
@@ -403,12 +405,101 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 }
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
+
+  //
+  long unsigned mem_total, mem_free, mem_available;
+
+  //
+
+
+  if (number_of_processors == -1) number_of_processors = sysconf(_SC_NPROCESSORS_ONLN);
+  int n = 0;
+  long int frequency = sysconf(_SC_CLK_TCK); // dal man proc, frequenza variabile?
+  char* token;
+  int i = 0;
+
+  // https://man7.org/linux/man-pages/man5/proc.5.html
+  // cartella: /proc/stat
+  // credits. snippet https://stackoverflow.com/questions/3501338/c-read-file-line-by-line
+  // credits. snippet https://linux.die.net/man/3/getline
+  //snippet leggermente modificato
+
   wclear(window);
   box(window, (int)'|', (int)'-');
   mvwprintw(window, 1, 2, "STATS CUMULATIVE DI SISTEMA: %c", '\0');
   wrefresh(window);
 
+  FILE *fp = NULL;
+  char *buffer_line = NULL;//dal man dice che la alloca lui, e se troppo piccola la realloca, va deallocata. Userei lo stack ma lo snippet del man consigliato è questo...
+  size_t lenght = 0;
+
+  if ((fp = fopen(PROC_STAT_PATH, "r")) == NULL) exit(EXIT_FAILURE);
+
+  while (getline(&buffer_line, &lenght, fp) != -1){
+    i = 0;
+    //wclear(window);
+    //mvwprintw(window, 2, 2, "%s %c", buffer_line, '\0');
+    //wrefresh(window);
+    //sleep(1);
+
+    token = strtok(buffer_line, SEPARATOR1);
+
+    if(i == 0){
+      if (buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u'){ // cpuN
+
+        if (buffer_line[3] != ' '){
+          // wclear(window);
+          mvwprintw(window, n + 2, 2, "CPU%d %s %c", n, buffer_line, '\0');
+          wrefresh(window);
+          n = (n + 1) % number_of_processors;
+        }else{
+
+        }
+
+        while (token != NULL && i < MAX_TOKEN3){
+
+          token = strtok(NULL, SEPARATOR1);
+          i++;
+
+          if(i == 1){//user
+
+          }else if(i == 2){//nice
+
+          }else if(i == 3){//system
+
+          }
+
+        }
+        
+      }else if (buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u' && buffer_line[3] == ' '){ // cpu (totale)
+      }
+
+      
+    }  
+  }
+
+  fclose(fp);
+
+  if ((fp = fopen(PROC_MEMINFO_PATH, "r")) == NULL) exit(EXIT_FAILURE);
+  token = NULL;
+  i = 0;
+
+  while (getline(&buffer_line, &lenght, fp) != -1){
+    i = 0;
+    token = strtok(buffer_line, SEPARATOR2);
+
+    if (!strcmp(token, "MemTotal")){//MemTotal %lu
+      token = strtok(NULL, SEPARATOR1);
+      mem_total = strtoul(token, NULL, 10);
+    }else if (!strcmp(token, "MemFree")){
+      token = strtok(NULL, SEPARATOR1);//
+      mem_free = strtoul(token, NULL, 10);
+    }else if (!strcmp(token, "MemAvailable")){//
+      token = strtok(NULL, SEPARATOR1);
+      mem_available = strtoul(token, NULL, 10);
+    }
+  }
+
+  fclose(fp);
   return;
 }
-
-    //"fortunatamente" non essendo un programma che deve girare su un sistema con poca ram posso permettermi questi sprechi di memoria.

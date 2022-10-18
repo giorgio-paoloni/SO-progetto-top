@@ -23,11 +23,15 @@
 #define SEPARATOR2 " \t\n:"
 #define MAX_TOKEN1 25
 #define MAX_TOKEN2 5
+#define MAX_TOKEN3 4
 #define BUFFER_STAT_LENGHT 256
 #define BUFFER_STATM_LENGHT 256
 #define RET_LENGHT 256
 #define CMD_LINE_LENGHT 7
-#define REFRESH_RATE 1 
+#define REFRESH_RATE 1
+//
+#define PROC_STAT_PATH "/proc/stat"
+#define PROC_MEMINFO_PATH "/proc/meminfo"
 
 #define PID_PATH_LENGHT 64
 #define PID_CMDLINE_LENGHT 128
