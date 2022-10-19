@@ -788,6 +788,7 @@ void resize_term_custom(){
 void refresh_UI(){ 
   if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
   //devo differenziare tra le le UI chiamanti
+  
   wclear(window3);
   wrefresh(window3);
   box(window3, (int) '|', (int) '-');

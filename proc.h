@@ -23,7 +23,7 @@
 #define SEPARATOR2 " \t\n:"
 #define MAX_TOKEN1 25
 #define MAX_TOKEN2 5
-#define MAX_TOKEN3 4
+#define MAX_TOKEN3 11
 #define BUFFER_STAT_LENGHT 256
 #define BUFFER_STATM_LENGHT 256
 #define RET_LENGHT 256
@@ -55,6 +55,7 @@ int current_number_of_processes();
 int is_pid(char* name);
 void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function);
 void print_stats(WINDOW *window, int starting_index, int starting_row);
+void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage);
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 

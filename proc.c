@@ -406,11 +406,37 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
 
-  //
+  //mem
   long unsigned mem_total, mem_free, mem_available;
 
-  //
+  // clock
+  long unsigned int user_time_clock;
+  long unsigned int superuser_time_clock;
+  long unsigned int idle_time_clock;
+  long unsigned int iowait_time_clock;
+  long unsigned int irq_time_clock;
+  long unsigned int softirq_time_clock;
+  long unsigned int steal_time_clock;
+  long unsigned int guest_time_clock;
+  long unsigned int guest_nice_time_clock;
 
+  //sec
+  double total_time_sec;
+
+  double user_time_sec;
+  double superuser_time_sec;
+  double idle_time_sec;
+  double iowait_time_sec;
+  double irq_time_sec;
+  double softirq_time_sec;
+  double steal_time_sec;
+  double guest_time_sec;
+  double guest_nice_time_sec;
+
+  //cpu
+
+  double cpu_percentage;
+  
 
   if (number_of_processors == -1) number_of_processors = sysconf(_SC_NPROCESSORS_ONLN);
   int n = 0;
@@ -423,6 +449,7 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
   // credits. snippet https://stackoverflow.com/questions/3501338/c-read-file-line-by-line
   // credits. snippet https://linux.die.net/man/3/getline
   //snippet leggermente modificato
+  //https://www.baeldung.com/linux/get-cpu-usage
 
   wclear(window);
   box(window, (int)'|', (int)'-');
@@ -447,34 +474,59 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
     if(i == 0){
       if (buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u'){ // cpuN
 
-        if (buffer_line[3] != ' '){
-          // wclear(window);
-          mvwprintw(window, n + 2, 2, "CPU%d %s %c", n, buffer_line, '\0');
-          wrefresh(window);
-          n = (n + 1) % number_of_processors;
-        }else{
-
-        }
-
         while (token != NULL && i < MAX_TOKEN3){
 
           token = strtok(NULL, SEPARATOR1);
           i++;
 
           if(i == 1){//user
-
+            user_time_clock = strtoul(token, NULL, 10);
           }else if(i == 2){//nice
-
+            //
           }else if(i == 3){//system
-
+            superuser_time_clock = strtoul(token, NULL, 10);
+          }else if(i == 4){//idle
+            idle_time_clock = strtoul(token, NULL, 10);
+          }else if(i == 5){
+            iowait_time_clock = strtoul(token, NULL, 10);
+          }else if(i == 6){
+            irq_time_clock = strtoul(token, NULL, 10);
+          }else if(i == 7){
+            softirq_time_clock = strtoul(token, NULL, 10);
+          }else if(i == 8){
+            steal_time_clock = strtoul(token, NULL, 10);
+          }else if(i == 9){
+            guest_time_clock = strtoul(token, NULL, 10);
+          }else if(i == 10){
+            guest_nice_time_clock = strtoul(token, NULL, 10);
           }
-
         }
-        
-      }else if (buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u' && buffer_line[3] == ' '){ // cpu (totale)
-      }
 
-      
+        user_time_sec = (double) user_time_clock / (double) frequency;
+        superuser_time_sec = (double) superuser_time_clock / (double) frequency;
+        idle_time_sec = (double) idle_time_clock / (double) frequency;
+        iowait_time_sec = (double) iowait_time_clock / (double) frequency;
+        irq_time_sec = (double) irq_time_clock / (double) frequency;
+        softirq_time_sec = (double) softirq_time_clock / (double) frequency;
+        steal_time_sec = (double) steal_time_clock / (double) frequency;
+        guest_time_sec = (double) guest_time_clock / (double) frequency;
+        guest_nice_time_sec = (double) guest_nice_time_clock / (double) frequency;
+
+        total_time_sec = user_time_sec + superuser_time_sec + idle_time_sec + iowait_time_sec + irq_time_sec + softirq_time_sec + steal_time_sec + guest_time_sec + guest_nice_time_sec;
+
+        cpu_percentage = 100 - ((double)idle_time_sec * 100 / (double) total_time_sec);
+
+        if (buffer_line[3] != ' ' && buffer_line[3] != '\0'){
+          // wclear(window);
+          //mvwprintw(window, n + 2, 2, "CPU%d %s %c", n, buffer_line, '\0');
+          //mvwprintw(window, n + 2, 2, "%s %c", buffer_line, '\0');
+          mvwprintw(window, n + 2, 2, "CPU%d %c", n, '\0');
+          percentage_bar(window, n + 2, 9, cpu_percentage);
+          //wrefresh(window);
+          n = (n + 1) % (number_of_processors+1);
+        }else{}
+
+      }
     }  
   }
 
@@ -501,5 +553,36 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
   }
 
   fclose(fp);
+  return;
+}
+
+void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage){
+
+  if(percentage >= 0 && percentage < 10){ // [########] 100%
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[..........]", percentage, '\0');  
+  }else if(percentage >= 10 && percentage < 20){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#.........]", percentage, '\0');
+  }else if(percentage >= 20 && percentage < 30){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[##........]", percentage, '\0');
+  }else if(percentage >= 30 && percentage < 40){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[###.......]", percentage, '\0');
+  }else if(percentage >= 40 && percentage < 50){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[####......]", percentage, '\0');
+  }else if(percentage >= 50 && percentage < 60){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#####.....]", percentage, '\0');
+  }else if(percentage >= 60 && percentage < 70){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[######....]", percentage, '\0');
+  }else if(percentage >= 70 && percentage < 80){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#######...]", percentage, '\0');
+  }else if(percentage >= 80 && percentage < 90){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[########..]", percentage, '\0');
+  }else if(percentage >= 90 && percentage < 100){
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#########.]", percentage, '\0');
+  }else{
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[##########]", percentage, '\0');
+  }
+
+  wrefresh(window);
+
   return;
 }
