@@ -808,7 +808,7 @@ void signal_handler(int sig){
   //TBD
   //stavo leggendo che non è una buona pratica installare un allarme così (a causa del context switch), informati... per ora lo implemento così per vedere se funziona
   refresh_UI();
-  alarm(REFRESH_RATE);
+  //alarm(REFRESH_RATE);
   //return;
 }
 

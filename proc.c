@@ -405,44 +405,52 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 }
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
+  //disabilito temporaneamente
+  return;
+
+  /*if (number_of_processors == -1)*/ number_of_processors = sysconf(_SC_NPROCESSORS_ONLN);
 
   //mem
   long unsigned mem_total, mem_free, mem_available;
 
   // clock
-  long unsigned int user_time_clock;
-  long unsigned int superuser_time_clock;
-  long unsigned int idle_time_clock;
-  long unsigned int iowait_time_clock;
-  long unsigned int irq_time_clock;
-  long unsigned int softirq_time_clock;
-  long unsigned int steal_time_clock;
-  long unsigned int guest_time_clock;
-  long unsigned int guest_nice_time_clock;
+  /*long unsigned int user_time_clock[2];
+  long unsigned int superuser_time_clock[2];
+  long unsigned int idle_time_clock[2];
+  long unsigned int iowait_time_clock[2];
+  long unsigned int irq_time_clock[2];
+  long unsigned int softirq_time_clock[2];
+  long unsigned int steal_time_clock[2];
+  long unsigned int guest_time_clock[2];
+  long unsigned int guest_nice_time_clock[2];*/
 
   //sec
-  double total_time_sec;
+  //[tempo di cattura][core del processore]
+  //t1 - t0 
 
-  double user_time_sec;
-  double superuser_time_sec;
-  double idle_time_sec;
-  double iowait_time_sec;
-  double irq_time_sec;
-  double softirq_time_sec;
-  double steal_time_sec;
-  double guest_time_sec;
-  double guest_nice_time_sec;
+  double total_time_sec[2][1 + number_of_processors];
+
+  double user_time_sec[2][1 + number_of_processors];
+  double superuser_time_sec[2][1 + number_of_processors];
+  double idle_time_sec[2][1 + number_of_processors];
+  double iowait_time_sec[2][1 + number_of_processors];
+  double irq_time_sec[2][1 + number_of_processors];
+  double softirq_time_sec[2][1 + number_of_processors];
+  double steal_time_sec[2][1 + number_of_processors];
+  double guest_time_sec[2][1 + number_of_processors];
+  double guest_nice_time_sec[2][1 + number_of_processors];
+
+  double idle_time_diff_sec[1 + number_of_processors], total_time_diff_sec[1 + number_of_processors];
 
   //cpu
 
-  double cpu_percentage;
+  double cpu_percentage = 0;
   
-
-  if (number_of_processors == -1) number_of_processors = sysconf(_SC_NPROCESSORS_ONLN);
   int n = 0;
   long int frequency = sysconf(_SC_CLK_TCK); // dal man proc, frequenza variabile?
   char* token;
   int i = 0;
+  int p = -1;
 
   // https://man7.org/linux/man-pages/man5/proc.5.html
   // cartella: /proc/stat
@@ -453,84 +461,91 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
 
   wclear(window);
   box(window, (int)'|', (int)'-');
-  mvwprintw(window, 1, 2, "STATS CUMULATIVE DI SISTEMA: %c", '\0');
+  //mvwprintw(window, 1, 2, "STATS CUMULATIVE DI SISTEMA: %c", '\0');
   wrefresh(window);
 
   FILE *fp = NULL;
   char *buffer_line = NULL;//dal man dice che la alloca lui, e se troppo piccola la realloca, va deallocata. Userei lo stack ma lo snippet del man consigliato è questo...
   size_t lenght = 0;
+  int j = 0;
+  int v = 0;
 
-  if ((fp = fopen(PROC_STAT_PATH, "r")) == NULL) exit(EXIT_FAILURE);
+  while(j < 2){ //j = tempi
+    p = -1;
 
-  while (getline(&buffer_line, &lenght, fp) != -1){
-    i = 0;
-    //wclear(window);
-    //mvwprintw(window, 2, 2, "%s %c", buffer_line, '\0');
-    //wrefresh(window);
-    //sleep(1);
+    if(j == 1) usleep(1000000);
 
-    token = strtok(buffer_line, SEPARATOR1);
 
-    if(i == 0){
-      if (buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u'){ // cpuN
+    if ((fp = fopen(PROC_STAT_PATH, "r")) == NULL) exit(EXIT_FAILURE);
 
-        while (token != NULL && i < MAX_TOKEN3){
+    while (getline(&buffer_line, &lenght, fp) != -1){
 
-          token = strtok(NULL, SEPARATOR1);
-          i++;
+      i = 0;
 
-          if(i == 1){//user
-            user_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 2){//nice
-            //
-          }else if(i == 3){//system
-            superuser_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 4){//idle
-            idle_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 5){
-            iowait_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 6){
-            irq_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 7){
-            softirq_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 8){
-            steal_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 9){
-            guest_time_clock = strtoul(token, NULL, 10);
-          }else if(i == 10){
-            guest_nice_time_clock = strtoul(token, NULL, 10);
+      token = strtok(buffer_line, SEPARATOR1);
+
+      if (i == 0 && buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u'){ // cpuN
+
+          //NB: a causa di cpu prima di tutti sono traslati di 1 in avanti...
+          //p = 0 => cpu
+          //p = 1 => cpu0
+          //etc..
+
+          p++;//vale -1, quindi inizia da 0
+
+          while (i < MAX_TOKEN3 && token != NULL){
+
+            token = strtok(NULL, SEPARATOR1);
+            i++;
+
+            if(i == 1){//user
+              user_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 2){//nice
+              //
+            }else if(i == 3){//system
+              superuser_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 4){//idle
+              idle_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 5){
+              iowait_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 6){
+              irq_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 7){
+              softirq_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 8){
+              steal_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 9){
+              guest_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }else if(i == 10){
+              guest_nice_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
+            }
           }
+
+          //total_time_sec[j][p] = user_time_sec[j][p] + superuser_time_sec[j][p] + idle_time_sec[j][p] + iowait_time_sec[j][p] + irq_time_sec[j][p] + softirq_time_sec[j][p] + steal_time_sec[j][p] + guest_time_sec[j][p] + guest_nice_time_sec[j][p];
         }
 
-        user_time_sec = (double) user_time_clock / (double) frequency;
-        superuser_time_sec = (double) superuser_time_clock / (double) frequency;
-        idle_time_sec = (double) idle_time_clock / (double) frequency;
-        iowait_time_sec = (double) iowait_time_clock / (double) frequency;
-        irq_time_sec = (double) irq_time_clock / (double) frequency;
-        softirq_time_sec = (double) softirq_time_clock / (double) frequency;
-        steal_time_sec = (double) steal_time_clock / (double) frequency;
-        guest_time_sec = (double) guest_time_clock / (double) frequency;
-        guest_nice_time_sec = (double) guest_nice_time_clock / (double) frequency;
+    }
 
-        total_time_sec = user_time_sec + superuser_time_sec + idle_time_sec + iowait_time_sec + irq_time_sec + softirq_time_sec + steal_time_sec + guest_time_sec + guest_nice_time_sec;
-
-        cpu_percentage = 100 - ((double)idle_time_sec * 100 / (double) total_time_sec);
-
-        if (buffer_line[3] != ' ' && buffer_line[3] != '\0'){
-          // wclear(window);
-          //mvwprintw(window, n + 2, 2, "CPU%d %s %c", n, buffer_line, '\0');
-          //mvwprintw(window, n + 2, 2, "%s %c", buffer_line, '\0');
-          mvwprintw(window, n + 2, 2, "CPU%d %c", n, '\0');
-          percentage_bar(window, n + 2, 9, cpu_percentage);
-          //wrefresh(window);
-          n = (n + 1) % (number_of_processors+1);
-        }else{}
-
-      }
-    }  
+    fclose(fp);
+    j++;
+    /*free(buffer_line);
+    lenght = 0;*/
   }
 
-  fclose(fp);
+  for(int k = 0; k < (number_of_processors + 1 ); k++){
+
+    //idle_time_diff_sec[k] = idle_time_sec[1][k] - idle_time_sec[0][k];
+    //total_time_diff_sec[k] = total_time_sec[1][k] - total_time_sec[0][k];
+    //cpu_percentage = ((double)idle_time_diff_sec[k] * 100 / (double)total_time_diff_sec[k]);
+
+    mvwprintw(window, k + 2, 2, "CPU%d T1: %0.2f T0: %0.2f %c", k - 1, idle_time_sec[1][k],  idle_time_sec[0][k], '\0');
+    wrefresh(window);
+    //cpu_percentage = idle_time_sec[1][k];
+
+    //mvwprintw(window, k + 2, 2, "CPU%d %c", k-1, '\0');
+    //percentage_bar(window, k + 2, 9, cpu_percentage);
+  }
+
 
   if ((fp = fopen(PROC_MEMINFO_PATH, "r")) == NULL) exit(EXIT_FAILURE);
   token = NULL;
@@ -583,6 +598,121 @@ void percentage_bar(WINDOW *window, int starting_row, int starting_col, double p
   }
 
   wrefresh(window);
+
+  return;
+}
+
+void cpu_usage(){
+  pthread_t cpu_snap0, cpu_snap1;
+  //TO DO
+  return;
+}
+
+void* cpu_snapshot(int time){
+  cpu_snapshot_t* cpu_snap = cpu_snapshot_alloc(time);
+  
+  int p = -1; 
+  int i;
+  FILE* fp;
+  char* buffer_line = NULL;
+  int lenght = 0;
+  char* token;
+  long int frequency = sysconf(_SC_CLK_TCK);
+
+  if ((fp = fopen(PROC_STAT_PATH, "r")) == NULL)
+    exit(EXIT_FAILURE);
+
+  while (getline(&buffer_line, &lenght, fp) != -1)
+  {
+
+    i = 0;
+
+    token = strtok(buffer_line, SEPARATOR1);
+
+    if (i == 0 && buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u')
+    { // cpuN
+
+      // NB: a causa di cpu prima di tutti sono traslati di 1 in avanti...
+      // p = 0 => cpu
+      // p = 1 => cpu0
+      // etc..
+
+      p++; // vale -1, quindi inizia da 0
+
+      while (i < MAX_TOKEN3 && token != NULL){
+
+        token = strtok(NULL, SEPARATOR1);
+        i++;
+
+        if (i == 1){ // user
+          cpu_snap->total_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 2){ // nice
+          //
+        }else if (i == 3){ // system
+          cpu_snap->superuser_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 4){ // idle
+          cpu_snap->idle_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 5){
+          cpu_snap->iowait_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 6){
+          cpu_snap->irq_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 7){
+          cpu_snap->softirq_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 8){
+          cpu_snap->steal_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 9){
+          cpu_snap->guest_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }else if (i == 10){
+          cpu_snap->guest_nice_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+        }
+      }
+    }
+  }
+
+  for(int k = 0 ; k < NUM_PROCESSOR + 1; k++){
+    cpu_snap->total_time_sec[k] = cpu_snap->user_time_sec[k] + cpu_snap->superuser_time_sec[k] + cpu_snap->idle_time_sec[k] + cpu_snap->iowait_time_sec[k] + cpu_snap->irq_time_sec[k] + cpu_snap->softirq_time_sec[k] + cpu_snap->steal_time_sec[k] + cpu_snap->guest_time_sec[k] + cpu_snap->guest_nice_time_sec[k];
+  }
+
+  fclose(fp);
+  free(buffer_line);
+
+  return cpu_snap;
+}
+
+void* cpu_snapshot_alloc(int time){
+
+  cpu_snapshot_t* ret = (cpu_snapshot_t*) malloc(sizeof(cpu_snapshot_t));
+
+  ret->time = time;
+
+  ret->total_time_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->user_time_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->superuser_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->idle_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->iowait_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->irq_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->softirq_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->steal_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->guest_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->guest_nice_time_sec = (double *)malloc((1 + NUM_PROCESSOR) * sizeof(double));
+
+  return (void*) ret;
+}
+
+void cpu_snapshot_free(cpu_snapshot_t* struct_ptr){
+
+  free(struct_ptr->total_time_sec);
+  free(struct_ptr->user_time_sec);
+  free(struct_ptr->superuser_time_sec);
+  free(struct_ptr->idle_time_sec);
+  free(struct_ptr->iowait_time_sec);
+  free(struct_ptr->irq_time_sec);
+  free(struct_ptr->softirq_time_sec);
+  free(struct_ptr->steal_time_sec);
+  free(struct_ptr->guest_time_sec);
+  free(struct_ptr->guest_nice_time_sec);
+
+  free(struct_ptr);
 
   return;
 }

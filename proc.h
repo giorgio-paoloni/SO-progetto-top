@@ -8,9 +8,11 @@
 #include <sys/types.h>
 #include <sys/sysinfo.h>//https://man7.org/linux/man-pages/man2/sysinfo.2.html, per info sulla ram
 #include <dirent.h> //https://man7.org/linux/man-pages/man3/opendir.3.html, utile per manipolare cartelle in C
+#include <sys/stat.h>//non credo verrà usata alla fine...
 #include <string.h>
 #include <fcntl.h>
 #include <ncurses.h>
+#include <pthread.h>
 
 #undef _POSIX_C_SOURCE //https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-closedir-close-directory
 
@@ -43,6 +45,8 @@
 #define PRINT_PROC 0
 #define PRINT_PROC_ADVANCED 1
 
+#define NUM_PROCESSOR sysconf(_SC_NPROCESSORS_ONLN)
+
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
 
 void print_proc(WINDOW* window, int starting_index, int starting_row);
@@ -56,6 +60,32 @@ int is_pid(char* name);
 void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function);
 void print_stats(WINDOW *window, int starting_index, int starting_row);
 void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage);
+
+//struct
+
+typedef struct cpu_snapshot_t{
+    int time;
+
+    double* total_time_sec;
+    double* user_time_sec;
+    double* superuser_time_sec;
+    double* idle_time_sec;
+    double* iowait_time_sec;
+    double* irq_time_sec;
+    double* softirq_time_sec;
+    double* steal_time_sec;
+    double* guest_time_sec;
+    double* guest_nice_time_sec;
+
+}cpu_snapshot_t;
+
+void cpu_usage();
+
+void *cpu_snapshot(int time);
+
+void *cpu_snapshot_alloc(int time);
+
+void cpu_snapshot_free(cpu_snapshot_t* free);
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 
