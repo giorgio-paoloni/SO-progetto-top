@@ -86,7 +86,7 @@ typedef struct cpu_usage_t{
     double* cpu_percentage;
 }cpu_usage_t;
 
-void cpu_usage(void* arg);
+void cpu_usage(WINDOW* window, void* arg);
 void* cpu_usage_alloc();
 void cpu_usage_free(cpu_usage_t *free);
 void* cpu_usage_thread_wrapper(void *arg);

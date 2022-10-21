@@ -311,14 +311,27 @@ void TUI_stats_interface(){
 
   refresh();
 
+  cpu_usage_t *cpu_usage_var = (cpu_usage_t *)cpu_usage_alloc();
+  cpu_usage(window3, cpu_usage_var);
+
   int char_input = getch();
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B') ){
     char_input = getch();
-    /*if(char_input != ERR)*/ print_stats(window3, starting_process, starting_row);
+    /*if(char_input != ERR) print_stats(window3, starting_process, starting_row);*/
+    
+    /*for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
+      //wclear(window3);
+      mvwprintw(window3, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
+      wrefresh(window3);
+    }*/
+    wclear(window3);
+    wrefresh(window3);
+    cpu_usage(window3, cpu_usage_var);
 
   }
 
+  cpu_usage_free(cpu_usage_var);
   return;
 }
 

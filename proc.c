@@ -405,19 +405,20 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 }
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
+  return;
   //mvwprintw(window, 1, 2, "BEGIN %c", '\0');
   //wrefresh(window);
   //return;
 
   // disabilito temporaneamente
   cpu_usage_t* cpu_usage_var = (cpu_usage_t*) cpu_usage_alloc();
-  cpu_usage(cpu_usage_var);
+  cpu_usage(window, cpu_usage_var);
 
-  for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
+  /*for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
     mvwprintw(window, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
     wrefresh(window);
     // cpu_usage(cpu_usage_var);
-  }
+  }*/
  
 
   //mvwprintw(window, 2, 2, "PRE %c", '\0');
@@ -461,7 +462,7 @@ void percentage_bar(WINDOW *window, int starting_row, int starting_col, double p
   return;
 }
 
-void cpu_usage(void* arg){
+void cpu_usage(WINDOW *window, void* arg){
   //questo processo verrà lanciato come thread
   
   if(arg == NULL) return;// *arg = (void*) cpu_usage_alloc(); //doppio puntatore? side-effect?//https://stackoverflow.com/questions/16819202/side-effect-on-object-pointer
@@ -474,14 +475,22 @@ void cpu_usage(void* arg){
   cpu_usage_t* cpu_usage_arg_cast = (cpu_usage_t*) arg;
 
   cpu_snapshot_t* cpu_snapshot_t0 = cpu_snapshot(0);
-  nanosleep(&sleepValue, NULL);
+
+  //nanosleep(&sleepValue, NULL);
   cpu_snapshot_t* cpu_snapshot_t1 = cpu_snapshot(1);
 
   for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
+    // wclear(window3);
+    mvwprintw(window, k + 1, 2, "CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f %c", (k - 1), cpu_snapshot_t0->idle_time_sec[k], cpu_snapshot_t0->user_time_sec[k], cpu_snapshot_t0->superuser_time_sec[k], cpu_snapshot_t0->total_time_sec[k], '\0');
+    wrefresh(window);
+  }
+  
+
+  /*for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
     cpu_usage_arg_cast->idle_time_diff_sec[k] = (double) cpu_snapshot_t1->idle_time_sec[k] - cpu_snapshot_t0->idle_time_sec[k];
     cpu_usage_arg_cast->total_time_diff_sec[k] = (double) cpu_snapshot_t1->total_time_sec[k] - cpu_snapshot_t0->total_time_sec[k];
     cpu_usage_arg_cast->cpu_percentage[k] = (double) 100 - ( (double)cpu_usage_arg_cast->idle_time_diff_sec[k] * 100 / (double)cpu_usage_arg_cast->total_time_diff_sec[k]);
-  }
+  }*/
 
   cpu_snapshot_free(cpu_snapshot_t0);
   cpu_snapshot_free(cpu_snapshot_t1);
@@ -508,8 +517,7 @@ void* cpu_snapshot(int time){
   if ((fp = fopen(PROC_STAT_PATH, "r")) == NULL)
     exit(EXIT_FAILURE);
 
-  while (getline(&buffer_line, &lenght, fp) != -1)
-  {
+  while (getline(&buffer_line, &lenght, fp) != -1){
 
     i = 0;
 
@@ -531,7 +539,7 @@ void* cpu_snapshot(int time){
         i++;
 
         if (i == 1){ // user
-          cpu_snap->total_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
+          cpu_snap->user_time_sec[p] = (double)strtoul(token, NULL, 10) / (double)frequency;
         }else if (i == 2){ // nice
           //
         }else if (i == 3){ // system
