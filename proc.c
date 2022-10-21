@@ -405,169 +405,28 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 }
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
-  //disabilito temporaneamente
-  return;
+  //mvwprintw(window, 1, 2, "BEGIN %c", '\0');
+  //wrefresh(window);
+  //return;
 
-  /*if (number_of_processors == -1)*/ number_of_processors = sysconf(_SC_NPROCESSORS_ONLN);
+  // disabilito temporaneamente
+  cpu_usage_t* cpu_usage_var = (cpu_usage_t*) cpu_usage_alloc();
+  cpu_usage(cpu_usage_var);
 
-  //mem
-  long unsigned mem_total, mem_free, mem_available;
-
-  // clock
-  /*long unsigned int user_time_clock[2];
-  long unsigned int superuser_time_clock[2];
-  long unsigned int idle_time_clock[2];
-  long unsigned int iowait_time_clock[2];
-  long unsigned int irq_time_clock[2];
-  long unsigned int softirq_time_clock[2];
-  long unsigned int steal_time_clock[2];
-  long unsigned int guest_time_clock[2];
-  long unsigned int guest_nice_time_clock[2];*/
-
-  //sec
-  //[tempo di cattura][core del processore]
-  //t1 - t0 
-
-  double total_time_sec[2][1 + number_of_processors];
-
-  double user_time_sec[2][1 + number_of_processors];
-  double superuser_time_sec[2][1 + number_of_processors];
-  double idle_time_sec[2][1 + number_of_processors];
-  double iowait_time_sec[2][1 + number_of_processors];
-  double irq_time_sec[2][1 + number_of_processors];
-  double softirq_time_sec[2][1 + number_of_processors];
-  double steal_time_sec[2][1 + number_of_processors];
-  double guest_time_sec[2][1 + number_of_processors];
-  double guest_nice_time_sec[2][1 + number_of_processors];
-
-  double idle_time_diff_sec[1 + number_of_processors], total_time_diff_sec[1 + number_of_processors];
-
-  //cpu
-
-  double cpu_percentage = 0;
-  
-  int n = 0;
-  long int frequency = sysconf(_SC_CLK_TCK); // dal man proc, frequenza variabile?
-  char* token;
-  int i = 0;
-  int p = -1;
-
-  // https://man7.org/linux/man-pages/man5/proc.5.html
-  // cartella: /proc/stat
-  // credits. snippet https://stackoverflow.com/questions/3501338/c-read-file-line-by-line
-  // credits. snippet https://linux.die.net/man/3/getline
-  //snippet leggermente modificato
-  //https://www.baeldung.com/linux/get-cpu-usage
-
-  wclear(window);
-  box(window, (int)'|', (int)'-');
-  //mvwprintw(window, 1, 2, "STATS CUMULATIVE DI SISTEMA: %c", '\0');
-  wrefresh(window);
-
-  FILE *fp = NULL;
-  char *buffer_line = NULL;//dal man dice che la alloca lui, e se troppo piccola la realloca, va deallocata. Userei lo stack ma lo snippet del man consigliato è questo...
-  size_t lenght = 0;
-  int j = 0;
-  int v = 0;
-
-  while(j < 2){ //j = tempi
-    p = -1;
-
-    if(j == 1) usleep(1000000);
-
-
-    if ((fp = fopen(PROC_STAT_PATH, "r")) == NULL) exit(EXIT_FAILURE);
-
-    while (getline(&buffer_line, &lenght, fp) != -1){
-
-      i = 0;
-
-      token = strtok(buffer_line, SEPARATOR1);
-
-      if (i == 0 && buffer_line[0] == 'c' && buffer_line[1] == 'p' && buffer_line[2] == 'u'){ // cpuN
-
-          //NB: a causa di cpu prima di tutti sono traslati di 1 in avanti...
-          //p = 0 => cpu
-          //p = 1 => cpu0
-          //etc..
-
-          p++;//vale -1, quindi inizia da 0
-
-          while (i < MAX_TOKEN3 && token != NULL){
-
-            token = strtok(NULL, SEPARATOR1);
-            i++;
-
-            if(i == 1){//user
-              user_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 2){//nice
-              //
-            }else if(i == 3){//system
-              superuser_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 4){//idle
-              idle_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 5){
-              iowait_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 6){
-              irq_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 7){
-              softirq_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 8){
-              steal_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 9){
-              guest_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }else if(i == 10){
-              guest_nice_time_sec[j][p] = (double) strtoul(token, NULL, 10) / (double) frequency;
-            }
-          }
-
-          //total_time_sec[j][p] = user_time_sec[j][p] + superuser_time_sec[j][p] + idle_time_sec[j][p] + iowait_time_sec[j][p] + irq_time_sec[j][p] + softirq_time_sec[j][p] + steal_time_sec[j][p] + guest_time_sec[j][p] + guest_nice_time_sec[j][p];
-        }
-
-    }
-
-    fclose(fp);
-    j++;
-    /*free(buffer_line);
-    lenght = 0;*/
-  }
-
-  for(int k = 0; k < (number_of_processors + 1 ); k++){
-
-    //idle_time_diff_sec[k] = idle_time_sec[1][k] - idle_time_sec[0][k];
-    //total_time_diff_sec[k] = total_time_sec[1][k] - total_time_sec[0][k];
-    //cpu_percentage = ((double)idle_time_diff_sec[k] * 100 / (double)total_time_diff_sec[k]);
-
-    mvwprintw(window, k + 2, 2, "CPU%d T1: %0.2f T0: %0.2f %c", k - 1, idle_time_sec[1][k],  idle_time_sec[0][k], '\0');
+  for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
+    mvwprintw(window, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
     wrefresh(window);
-    //cpu_percentage = idle_time_sec[1][k];
-
-    //mvwprintw(window, k + 2, 2, "CPU%d %c", k-1, '\0');
-    //percentage_bar(window, k + 2, 9, cpu_percentage);
+    // cpu_usage(cpu_usage_var);
   }
+ 
 
+  //mvwprintw(window, 2, 2, "PRE %c", '\0');
+  //wrefresh(window);
 
-  if ((fp = fopen(PROC_MEMINFO_PATH, "r")) == NULL) exit(EXIT_FAILURE);
-  token = NULL;
-  i = 0;
+  //mvwprintw(window, 3, 2, "POST %c", '\0');
+  //wrefresh(window);
 
-  while (getline(&buffer_line, &lenght, fp) != -1){
-    i = 0;
-    token = strtok(buffer_line, SEPARATOR2);
-
-    if (!strcmp(token, "MemTotal")){//MemTotal %lu
-      token = strtok(NULL, SEPARATOR1);
-      mem_total = strtoul(token, NULL, 10);
-    }else if (!strcmp(token, "MemFree")){
-      token = strtok(NULL, SEPARATOR1);//
-      mem_free = strtoul(token, NULL, 10);
-    }else if (!strcmp(token, "MemAvailable")){//
-      token = strtok(NULL, SEPARATOR1);
-      mem_available = strtoul(token, NULL, 10);
-    }
-  }
-
-  fclose(fp);
+  cpu_usage_free(cpu_usage_var);
   return;
 }
 
@@ -602,20 +461,47 @@ void percentage_bar(WINDOW *window, int starting_row, int starting_col, double p
   return;
 }
 
-void cpu_usage(){
-  pthread_t cpu_snap0, cpu_snap1;
-  //TO DO
+void cpu_usage(void* arg){
+  //questo processo verrà lanciato come thread
+  
+  if(arg == NULL) return;// *arg = (void*) cpu_usage_alloc(); //doppio puntatore? side-effect?//https://stackoverflow.com/questions/16819202/side-effect-on-object-pointer
+  //credits.https://stackoverflow.com/questions/7684359/how-to-use-nanosleep-in-c-what-are-tim-tv-sec-and-tim-tv-nsec
+  struct timespec sleepValue = {0};
+  #define NANO_SECOND_MULTIPLIER 1000000 // 1 millisecond = 1,000,000 Nanoseconds
+  const long INTERVAL_MS = 500 * NANO_SECOND_MULTIPLIER;
+  sleepValue.tv_nsec = INTERVAL_MS;
+  
+  cpu_usage_t* cpu_usage_arg_cast = (cpu_usage_t*) arg;
+
+  cpu_snapshot_t* cpu_snapshot_t0 = cpu_snapshot(0);
+  nanosleep(&sleepValue, NULL);
+  cpu_snapshot_t* cpu_snapshot_t1 = cpu_snapshot(1);
+
+  for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
+    cpu_usage_arg_cast->idle_time_diff_sec[k] = (double) cpu_snapshot_t1->idle_time_sec[k] - cpu_snapshot_t0->idle_time_sec[k];
+    cpu_usage_arg_cast->total_time_diff_sec[k] = (double) cpu_snapshot_t1->total_time_sec[k] - cpu_snapshot_t0->total_time_sec[k];
+    cpu_usage_arg_cast->cpu_percentage[k] = (double) 100 - ( (double)cpu_usage_arg_cast->idle_time_diff_sec[k] * 100 / (double)cpu_usage_arg_cast->total_time_diff_sec[k]);
+  }
+
+  cpu_snapshot_free(cpu_snapshot_t0);
+  cpu_snapshot_free(cpu_snapshot_t1);
+  
   return;
 }
 
+void* cpu_usage_thread_wrapper(void* arg){
+  return NULL;
+}
+
 void* cpu_snapshot(int time){
+
   cpu_snapshot_t* cpu_snap = cpu_snapshot_alloc(time);
   
   int p = -1; 
   int i;
   FILE* fp;
   char* buffer_line = NULL;
-  int lenght = 0;
+  size_t lenght = 0;
   char* token;
   long int frequency = sysconf(_SC_CLK_TCK);
 
@@ -676,7 +562,7 @@ void* cpu_snapshot(int time){
   fclose(fp);
   free(buffer_line);
 
-  return cpu_snap;
+  return (void *) cpu_snap;
 }
 
 void* cpu_snapshot_alloc(int time){
@@ -712,6 +598,34 @@ void cpu_snapshot_free(cpu_snapshot_t* struct_ptr){
   free(struct_ptr->guest_time_sec);
   free(struct_ptr->guest_nice_time_sec);
 
+  free(struct_ptr);
+
+  return;
+}
+
+void* cpu_usage_alloc(){
+
+  cpu_usage_t *ret = (cpu_usage_t*) malloc(sizeof(cpu_usage_t));
+
+  //equival calloc
+
+  ret->idle_time_diff_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->total_time_diff_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
+  ret->cpu_percentage = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
+
+  memset(ret->idle_time_diff_sec, 0, (1 + NUM_PROCESSOR) * sizeof(double));
+  memset(ret->total_time_diff_sec, 0, (1 + NUM_PROCESSOR) * sizeof(double));
+  memset(ret->cpu_percentage, 0, (1 + NUM_PROCESSOR) * sizeof(double));
+
+  return (void*) ret;
+}
+
+void cpu_usage_free(cpu_usage_t* struct_ptr){
+
+  free(struct_ptr->idle_time_diff_sec);
+  free(struct_ptr->total_time_diff_sec);
+  free(struct_ptr->cpu_percentage);
+  
   free(struct_ptr);
 
   return;

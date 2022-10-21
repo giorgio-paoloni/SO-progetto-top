@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <ncurses.h>
 #include <pthread.h>
+#include <time.h>
 
 #undef _POSIX_C_SOURCE //https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-closedir-close-directory
 
@@ -79,13 +80,21 @@ typedef struct cpu_snapshot_t{
 
 }cpu_snapshot_t;
 
-void cpu_usage();
+typedef struct cpu_usage_t{
+    double* idle_time_diff_sec;
+    double* total_time_diff_sec;
+    double* cpu_percentage;
+}cpu_usage_t;
 
-void *cpu_snapshot(int time);
+void cpu_usage(void* arg);
+void* cpu_usage_alloc();
+void cpu_usage_free(cpu_usage_t *free);
+void* cpu_usage_thread_wrapper(void *arg);
 
-void *cpu_snapshot_alloc(int time);
-
+void* cpu_snapshot(int time);
+void* cpu_snapshot_alloc(int time);
 void cpu_snapshot_free(cpu_snapshot_t* free);
+
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 
