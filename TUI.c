@@ -1,5 +1,7 @@
 #include "TUI.h"
 
+sem_t sem1;
+
 WINDOW* window1;
 WINDOW* window2;
 WINDOW* window3;
@@ -293,6 +295,7 @@ void TUI_list_interface(){
 void TUI_stats_interface(){
 
   current_if = STATS_IF;
+  sem_init(&sem1, 0, 1);
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -312,9 +315,15 @@ void TUI_stats_interface(){
   refresh();
 
   cpu_usage_t *cpu_usage_var = (cpu_usage_t *)cpu_usage_alloc();
-  cpu_usage(window3, cpu_usage_var);
+  //cpu_usage(window3, cpu_usage_var);
 
   int char_input = getch();
+  pthread_t t1;
+
+  thread_arg_t *targ1 = (thread_arg_t *)malloc(sizeof(thread_arg_t));
+  targ1->cpu_us = (void*) cpu_usage_var;
+  targ1->win1 = (void*) window3;
+
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B') ){
     char_input = getch();
@@ -327,11 +336,17 @@ void TUI_stats_interface(){
     }*/
     wclear(window3);
     wrefresh(window3);
-    cpu_usage(window3, cpu_usage_var);
+
+    pthread_create(&t1, NULL, cpu_usage_thread_wrapper, (void*) targ1);
+    pthread_detach(t1);
+    //pthread_join(t1, NULL);
+
+    //cpu_usage(window3, cpu_usage_var);
 
   }
 
   cpu_usage_free(cpu_usage_var);
+  sem_destroy(&sem1);
   return;
 }
 
@@ -805,8 +820,7 @@ void refresh_UI(){
   wclear(window3);
   wrefresh(window3);
   box(window3, (int) '|', (int) '-');
-  wrefresh(window3);
-  
+
   if(current_if == STATS_IF){
     print_stats(window3, starting_process, starting_row);
   }else if(current_if != LIST_IF){
@@ -863,3 +877,4 @@ void print_easteregg(int i){
   fclose(file);
 
 }
+

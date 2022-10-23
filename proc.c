@@ -469,15 +469,15 @@ void cpu_usage(WINDOW *window, void* arg){
   //credits.https://stackoverflow.com/questions/7684359/how-to-use-nanosleep-in-c-what-are-tim-tv-sec-and-tim-tv-nsec
   struct timespec sleepValue = {0};
   #define NANO_SECOND_MULTIPLIER 1000000 // 1 millisecond = 1,000,000 Nanoseconds
-  const long INTERVAL_MS = 100 * NANO_SECOND_MULTIPLIER;
+  const long INTERVAL_MS = 10 * NANO_SECOND_MULTIPLIER;
   sleepValue.tv_nsec = INTERVAL_MS;
   
-  cpu_usage_t* cpu_usage_arg_cast = (cpu_usage_t*) arg;
+  //cpu_usage_t* cpu_usage_arg_cast = (cpu_usage_t*) arg;
 
   cpu_snapshot_t* cpu_snapshot_t0 = cpu_snapshot(0);
 
   nanosleep(&sleepValue, NULL);
-
+  
   cpu_snapshot_t* cpu_snapshot_t1 = cpu_snapshot(1);
 
   for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
@@ -503,6 +503,12 @@ void cpu_usage(WINDOW *window, void* arg){
 }
 
 void* cpu_usage_thread_wrapper(void* arg){
+  thread_arg_t* arg_cast1 = (thread_arg_t*) arg;
+  sem_wait(&sem1);
+
+  cpu_usage((WINDOW *) arg_cast1->win1, (cpu_usage_t *) arg_cast1->cpu_us);
+
+  sem_post(&sem1);
   return NULL;
 }
 

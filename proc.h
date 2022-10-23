@@ -14,6 +14,7 @@
 #include <ncurses.h>
 #include <pthread.h>
 #include <time.h>
+#include <semaphore.h>
 
 #undef _POSIX_C_SOURCE //https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-closedir-close-directory
 
@@ -62,6 +63,9 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 void print_stats(WINDOW *window, int starting_index, int starting_row);
 void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage);
 
+//var
+extern sem_t sem1; //dichiarata in TUI.C
+
 //struct
 
 typedef struct cpu_snapshot_t{
@@ -85,6 +89,11 @@ typedef struct cpu_usage_t{
     double* total_time_diff_sec;
     double* cpu_percentage;
 }cpu_usage_t;
+
+typedef struct thread_arg_t{
+    void *win1;
+    void *cpu_us;
+} thread_arg_t;
 
 void cpu_usage(WINDOW* window, void* arg);
 void* cpu_usage_alloc();
