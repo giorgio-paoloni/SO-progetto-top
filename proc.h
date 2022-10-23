@@ -99,3 +99,5 @@ void cpu_snapshot_free(cpu_snapshot_t* free);
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 
 //man top: https://man7.org/linux/man-pages/man1/top.1.html
+
+//void delay(int milliseconds);

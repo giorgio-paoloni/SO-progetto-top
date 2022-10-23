@@ -469,19 +469,23 @@ void cpu_usage(WINDOW *window, void* arg){
   //credits.https://stackoverflow.com/questions/7684359/how-to-use-nanosleep-in-c-what-are-tim-tv-sec-and-tim-tv-nsec
   struct timespec sleepValue = {0};
   #define NANO_SECOND_MULTIPLIER 1000000 // 1 millisecond = 1,000,000 Nanoseconds
-  const long INTERVAL_MS = 500 * NANO_SECOND_MULTIPLIER;
+  const long INTERVAL_MS = 100 * NANO_SECOND_MULTIPLIER;
   sleepValue.tv_nsec = INTERVAL_MS;
   
   cpu_usage_t* cpu_usage_arg_cast = (cpu_usage_t*) arg;
 
   cpu_snapshot_t* cpu_snapshot_t0 = cpu_snapshot(0);
 
-  //nanosleep(&sleepValue, NULL);
+  nanosleep(&sleepValue, NULL);
+
   cpu_snapshot_t* cpu_snapshot_t1 = cpu_snapshot(1);
 
   for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
     // wclear(window3);
-    mvwprintw(window, k + 1, 2, "CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f %c", (k - 1), cpu_snapshot_t0->idle_time_sec[k], cpu_snapshot_t0->user_time_sec[k], cpu_snapshot_t0->superuser_time_sec[k], cpu_snapshot_t0->total_time_sec[k], '\0');
+    //mvwprintw(window, k + 1, 2, "(0)CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f %c", (k - 1), cpu_snapshot_t0->idle_time_sec[k], cpu_snapshot_t0->user_time_sec[k], cpu_snapshot_t0->superuser_time_sec[k], cpu_snapshot_t0->total_time_sec[k], '\0');
+
+    mvwprintw(window, k + 1, 2, "(0)CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f ", (k - 1), cpu_snapshot_t0->idle_time_sec[k], cpu_snapshot_t0->user_time_sec[k], cpu_snapshot_t0->superuser_time_sec[k], cpu_snapshot_t0->total_time_sec[k]);
+    mvwprintw(window, k + 1, 65, "(1)CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f %c", (k - 1), cpu_snapshot_t1->idle_time_sec[k], cpu_snapshot_t1->user_time_sec[k], cpu_snapshot_t1->superuser_time_sec[k], cpu_snapshot_t1->total_time_sec[k], '\0');
     wrefresh(window);
   }
   

@@ -805,7 +805,8 @@ void refresh_UI(){
   wclear(window3);
   wrefresh(window3);
   box(window3, (int) '|', (int) '-');
-
+  wrefresh(window3);
+  
   if(current_if == STATS_IF){
     print_stats(window3, starting_process, starting_row);
   }else if(current_if != LIST_IF){
