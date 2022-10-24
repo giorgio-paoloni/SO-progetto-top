@@ -15,6 +15,8 @@
 #include <pthread.h>
 #include <time.h>
 #include <semaphore.h>
+#include <signal.h>
+#include <errno.h>
 
 #undef _POSIX_C_SOURCE //https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-closedir-close-directory
 

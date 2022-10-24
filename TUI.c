@@ -294,6 +294,13 @@ void TUI_list_interface(){
 
 void TUI_stats_interface(){
 
+  sigset_t set1;
+
+  /*sigemptyset(&set1);
+  // sigaddset(&set1, SIGUSR1);
+  sigaddset(&set1, SIGALRM);
+  pthread_sigmask(SIG_SETMASK, &set1, NULL);*/
+
   current_if = STATS_IF;
   sem_init(&sem1, 0, 1);
 
@@ -324,8 +331,9 @@ void TUI_stats_interface(){
   targ1->cpu_us = (void*) cpu_usage_var;
   targ1->win1 = (void*) window3;
 
-
-  while(!(char_input == (int) 'b' || char_input == (int) 'B') ){
+  int sval;
+  
+  while( !(char_input == (int) 'b' || char_input == (int) 'B') ){
     char_input = getch();
     /*if(char_input != ERR) print_stats(window3, starting_process, starting_row);*/
     
@@ -337,9 +345,13 @@ void TUI_stats_interface(){
     wclear(window3);
     wrefresh(window3);
 
-    pthread_create(&t1, NULL, cpu_usage_thread_wrapper, (void*) targ1);
-    pthread_detach(t1);
-    //pthread_join(t1, NULL);
+    if(sem_getvalue(&sem1, &sval) == -1) exit(EXIT_FAILURE);
+
+    if(sval){//creo 1 thread alla volta solo se il semaforo è libero
+      pthread_create(&t1, NULL, cpu_usage_thread_wrapper, (void *)targ1);
+      pthread_detach(t1);
+      // pthread_join(t1, NULL);
+    }
 
     //cpu_usage(window3, cpu_usage_var);
 
@@ -813,7 +825,16 @@ void resize_term_custom(){
   
 }
 
-void refresh_UI(){ 
+void refresh_UI(){
+
+  
+  /*wclear(window3);
+  wrefresh(window3);
+  box(window3, (int)'|', (int)'-');
+  mvwprintw(window3, 1, 2, "TEST REFRESH %c", '\0');
+  wrefresh(window3);
+  return;*/
+
   if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
   //devo differenziare tra le le UI chiamanti
   
@@ -836,7 +857,7 @@ void signal_handler(int sig){
   //TBD
   //stavo leggendo che non è una buona pratica installare un allarme così (a causa del context switch), informati... per ora lo implemento così per vedere se funziona
   refresh_UI();
-  alarm(REFRESH_RATE);
+  //alarm(REFRESH_RATE);
   //return;
 }
 
