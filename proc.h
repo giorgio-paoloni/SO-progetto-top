@@ -51,28 +51,18 @@
 
 #define NUM_PROCESSOR sysconf(_SC_NPROCESSORS_ONLN)
 
-typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
-
-void print_proc(WINDOW* window, int starting_index, int starting_row);
-void print_proc_advanced(WINDOW* window, int starting_index, int starting_row);
-
-//utili
-long unsigned int get_system_uptime();
-char* print_PID_stats(char* path);
-int current_number_of_processes();
-int is_pid(char* name);
-void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function);
-void print_stats(WINDOW *window, int starting_index, int starting_row);
-void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage);
-
-//var
-extern sem_t sem1; //dichiarata in TUI.C
+//usate in proc.c
+#define NANO_SECOND_MULTIPLIER 1000000 // 1 millisecond = 1,000,000 Nanoseconds
+#define INTERVAL_NS 0
+#define INTERVAL_MS 500 * NANO_SECOND_MULTIPLIER; // NB: max 999
+#define INTERVAL_S 0
 
 //struct
 
+typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
+
 typedef struct cpu_snapshot_t{
     int time;
-
     double* total_time_sec;
     double* user_time_sec;
     double* superuser_time_sec;
@@ -92,12 +82,23 @@ typedef struct cpu_usage_t{
     double* cpu_percentage;
 }cpu_usage_t;
 
-typedef struct thread_arg_t{
-    void *win1;
-    void *cpu_us;
-} thread_arg_t;
+void print_proc(WINDOW* window, int starting_index, int starting_row);
+void print_proc_advanced(WINDOW* window, int starting_index, int starting_row);
+void print_stats(WINDOW *window, int starting_index, int starting_row);
 
-void cpu_usage(WINDOW* window, void* arg);
+//utili
+long unsigned int get_system_uptime();
+char* print_PID_stats(char* path);
+int current_number_of_processes();
+int is_pid(char* name);
+void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function);
+void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage);
+
+
+
+
+
+void cpu_usage();
 void* cpu_usage_alloc();
 void cpu_usage_free(cpu_usage_t *free);
 void* cpu_usage_thread_wrapper(void *arg);
@@ -106,6 +107,10 @@ void* cpu_snapshot(int time);
 void* cpu_snapshot_alloc(int time);
 void cpu_snapshot_free(cpu_snapshot_t* free);
 
+//var
+extern sem_t sem1; //dichiarata in TUI.C
+extern cpu_usage_t* cpu_usage_var;
+extern struct timespec sleep_value;
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 

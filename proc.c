@@ -2,6 +2,8 @@
 
 long number_of_processors = -1;
 
+
+
 long page_size = -1 ;// = sysconf(_SC_PAGESIZE);//https://man7.org/linux/man-pages/man2/getpagesize.2.html
 //Portable applications should employ sysconf(_Ssysinfo(system_information);sysinfo(system_information);C_PAGESIZE) instead of getpagesize():
 
@@ -405,29 +407,12 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 }
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
-  return;
-  //mvwprintw(window, 1, 2, "BEGIN %c", '\0');
-  //wrefresh(window);
-  //return;
 
-  // disabilito temporaneamente
-  cpu_usage_t* cpu_usage_var = (cpu_usage_t*) cpu_usage_alloc();
-  cpu_usage(window, cpu_usage_var);
-
-  /*for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
+  for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
+    // wclear(window3);
     mvwprintw(window, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
     wrefresh(window);
-    // cpu_usage(cpu_usage_var);
-  }*/
- 
-
-  //mvwprintw(window, 2, 2, "PRE %c", '\0');
-  //wrefresh(window);
-
-  //mvwprintw(window, 3, 2, "POST %c", '\0');
-  //wrefresh(window);
-
-  cpu_usage_free(cpu_usage_var);
+  }
   return;
 }
 
@@ -462,45 +447,26 @@ void percentage_bar(WINDOW *window, int starting_row, int starting_col, double p
   return;
 }
 
-void cpu_usage(WINDOW *window, void* arg){
-  //questo processo verrà lanciato come thread
-  
-  if(arg == NULL) return;// *arg = (void*) cpu_usage_alloc(); //doppio puntatore? side-effect?//https://stackoverflow.com/questions/16819202/side-effect-on-object-pointer
+void cpu_usage(){
+  //questo metodo verrà lanciato come thread
+
   //credits.https://stackoverflow.com/questions/7684359/how-to-use-nanosleep-in-c-what-are-tim-tv-sec-and-tim-tv-nsec
-  struct timespec sleepValue = {0};
-  #define NANO_SECOND_MULTIPLIER 1000000 // 1 millisecond = 1,000,000 Nanoseconds
-  const long INTERVAL_MS = 500 * NANO_SECOND_MULTIPLIER; //NB: max 999
-  sleepValue.tv_nsec = INTERVAL_MS;
-  sleepValue.tv_sec = 0;
-
-  cpu_usage_t* cpu_usage_arg_cast = (cpu_usage_t*) arg;
-
+  
   cpu_snapshot_t* cpu_snapshot_t0 = cpu_snapshot(0);
 
-  if(nanosleep(&sleepValue, NULL) == -1 && errno == EINTR) exit(EXIT_FAILURE);
-  if(nanosleep(&sleepValue, NULL) == -1 && errno == EINVAL) exit(EXIT_FAILURE);
+  if(nanosleep(&sleep_value, NULL) == -1 && errno == EINTR) exit(EXIT_FAILURE);
+  if(nanosleep(&sleep_value, NULL) == -1 && errno == EINVAL) exit(EXIT_FAILURE);
 
   cpu_snapshot_t* cpu_snapshot_t1 = cpu_snapshot(1);
 
-  /*for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
-    // wclear(window3);
-    //mvwprintw(window, k + 1, 2, "(0)CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f %c", (k - 1), cpu_snapshot_t0->idle_time_sec[k], cpu_snapshot_t0->user_time_sec[k], cpu_snapshot_t0->superuser_time_sec[k], cpu_snapshot_t0->total_time_sec[k], '\0');
-
-    mvwprintw(window, k + 1, 2, "(0)CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f ", (k - 1), cpu_snapshot_t0->idle_time_sec[k], cpu_snapshot_t0->user_time_sec[k], cpu_snapshot_t0->superuser_time_sec[k], cpu_snapshot_t0->total_time_sec[k]);
-    mvwprintw(window, k + 1, 65, "(1)CPU:%d Idl:%0.2f Usr:%0.2f Sus:%0.2f Tt:%0.2f %c", (k - 1), cpu_snapshot_t1->idle_time_sec[k], cpu_snapshot_t1->user_time_sec[k], cpu_snapshot_t1->superuser_time_sec[k], cpu_snapshot_t1->total_time_sec[k], '\0');
-    wrefresh(window);
-  }*/
-  
-
   for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
-    //cpu_usage_arg_cast->idle_time_diff_sec[k] = 0;
-    cpu_usage_arg_cast->idle_time_diff_sec[k] = (double) cpu_snapshot_t1->idle_time_sec[k] - cpu_snapshot_t0->idle_time_sec[k];
-    cpu_usage_arg_cast->total_time_diff_sec[k] = (double) cpu_snapshot_t1->total_time_sec[k] - cpu_snapshot_t0->total_time_sec[k];
+    cpu_usage_var->idle_time_diff_sec[k] = (double) cpu_snapshot_t1->idle_time_sec[k] - cpu_snapshot_t0->idle_time_sec[k];
+    cpu_usage_var->total_time_diff_sec[k] = (double) cpu_snapshot_t1->total_time_sec[k] - cpu_snapshot_t0->total_time_sec[k];
 
-    if (cpu_usage_arg_cast->total_time_diff_sec[k] != 0){
-      cpu_usage_arg_cast->cpu_percentage[k] = (double) 100 - ( (double)cpu_usage_arg_cast->idle_time_diff_sec[k] * 100 / (double)cpu_usage_arg_cast->total_time_diff_sec[k]);
+    if (cpu_usage_var->total_time_diff_sec[k] != 0){
+      cpu_usage_var->cpu_percentage[k] = (double)100 - ((double)cpu_usage_var->idle_time_diff_sec[k] * 100 / (double)cpu_usage_var->total_time_diff_sec[k]);
     }else{
-      cpu_usage_arg_cast->cpu_percentage[k] = (double) 0;
+      cpu_usage_var->cpu_percentage[k] = (double)0;
     }
   }
 
@@ -512,23 +478,16 @@ void cpu_usage(WINDOW *window, void* arg){
 
 void* cpu_usage_thread_wrapper(void* arg){
 
-  thread_arg_t *arg_cast1 = (thread_arg_t *)arg;
-
-  //if (arg_cast1->cpu_us == NULL) return NULL;
-
   sigset_t set1;
 
   sigemptyset(&set1);
-  //sigaddset(&set1, SIGUSR1);
   sigaddset(&set1, SIGALRM);
   pthread_sigmask(SIG_SETMASK, &set1, NULL);
 
-  
   sem_wait(&sem1);
-
-  cpu_usage((WINDOW *) arg_cast1->win1, (cpu_usage_t *) arg_cast1->cpu_us);
-
+  cpu_usage(); 
   sem_post(&sem1);
+
   return NULL;
 }
 
@@ -546,7 +505,6 @@ void* cpu_snapshot(int time){
 
   if ((fp = fopen(PROC_STAT_PATH, "r")) == NULL) exit(EXIT_FAILURE);
 
-  //fseek(fp, 0, SEEK_SET);
 
   while (getline(&buffer_line, &lenght, fp) != -1){
 

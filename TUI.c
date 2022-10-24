@@ -8,6 +8,8 @@ WINDOW* window4;
 sem_t sem1;
 cpu_usage_t *cpu_usage_var = NULL;
 
+struct timespec sleep_value = {0};
+
 int has_colors_bool = 0;
 
 struct sigaction signal_handler_struct, signal_handler_struct_old;
@@ -19,6 +21,9 @@ int max_y, max_x;
 int current_if =  DEFAULT_IF;
 
 void TUI_default_interface(){
+  
+  sleep_value.tv_nsec = INTERVAL_MS;
+  sleep_value.tv_sec = INTERVAL_S;
 
   sem_init(&sem1, 0, 1);
   cpu_usage_var = (cpu_usage_t *)cpu_usage_alloc();
@@ -300,14 +305,12 @@ void TUI_list_interface(){
 
 void TUI_stats_interface(){
 
-  //sigset_t set1;
-
-  /*sigemptyset(&set1);
-  // sigaddset(&set1, SIGUSR1);
-  sigaddset(&set1, SIGALRM);
-  pthread_sigmask(SIG_SETMASK, &set1, NULL);*/
-
   current_if = STATS_IF;
+
+  pthread_t t1;
+
+  pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
+  pthread_detach(t1);
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -325,45 +328,19 @@ void TUI_stats_interface(){
   wrefresh(window4);
 
   refresh();
+  //non amo il do..while 
+  int char_input = (int) ' '; //valore a caso... ma diverso da B o b
 
-  int char_input = getch();
-  pthread_t t1;
+  print_stats(window3, 0, 0);
 
-  thread_arg_t *targ1 = (thread_arg_t *)malloc(sizeof(thread_arg_t));
-  targ1->cpu_us = (void*) cpu_usage_var;
-  targ1->win1 = (void*) window3;
-
-  int sval;
-  
   while( !(char_input == (int) 'b' || char_input == (int) 'B') ){
     char_input = getch();
-    /*if(char_input != ERR) print_stats(window3, starting_process, starting_row);*/
-    
-    for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
-      //wclear(window3);
-      mvwprintw(window3, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
-      wrefresh(window3);
-    }
-    //wclear(window3);
-    //wrefresh(window3);
+    print_stats(window3, 0, 0);
 
-    if(sem_getvalue(&sem1, &sval) == -1) exit(EXIT_FAILURE);
-
-    //if(sval){//creo 1 thread alla volta solo se il semaforo è libero
-      pthread_create(&t1, NULL, cpu_usage_thread_wrapper, (void *)targ1);
-      pthread_detach(t1);
-      //pthread_join(t1, NULL);
-    //}
-
-    //cpu_usage(window3, cpu_usage_var);
-
+    pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
+    pthread_detach(t1);
   }
 
-  //pthread_join(t1, NULL);
-
-  //NB:devo stare attento all'ultimo thread se rimane ancora in running prima di chiudere le due righe di sotto è segm fault
-  //cpu_usage_free(cpu_usage_var);
-  //sem_destroy(&sem1);
   return;
 }
 
