@@ -1,11 +1,12 @@
 #include "TUI.h"
 
-sem_t sem1;
-
 WINDOW* window1;
 WINDOW* window2;
 WINDOW* window3;
 WINDOW* window4;
+
+sem_t sem1;
+cpu_usage_t *cpu_usage_var = NULL;
 
 int has_colors_bool = 0;
 
@@ -19,6 +20,9 @@ int current_if =  DEFAULT_IF;
 
 void TUI_default_interface(){
 
+  sem_init(&sem1, 0, 1);
+  cpu_usage_var = (cpu_usage_t *)cpu_usage_alloc();
+
   memset(&signal_handler_struct, 0, sizeof(struct sigaction));
   memset(&signal_handler_struct_old, 0, sizeof(struct sigaction));
   signal_handler_struct.sa_handler = &signal_handler;
@@ -28,7 +32,6 @@ void TUI_default_interface(){
   if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) perror("errore installazione sigaction!");
 
   int char_input;
-  
 
   initscr(); //ncurses, inizializza cose...
   if ((has_colors_bool = has_colors())) start_color(); // https://linux.die.net/man/3/start_color
@@ -167,6 +170,9 @@ void TUI_default_interface(){
   endwin();//ncurses, dealloca le finestre
   clear();
 
+  sem_destroy(&sem1);
+  cpu_usage_free(cpu_usage_var);
+
   return;
 }
 
@@ -294,7 +300,7 @@ void TUI_list_interface(){
 
 void TUI_stats_interface(){
 
-  sigset_t set1;
+  //sigset_t set1;
 
   /*sigemptyset(&set1);
   // sigaddset(&set1, SIGUSR1);
@@ -302,7 +308,6 @@ void TUI_stats_interface(){
   pthread_sigmask(SIG_SETMASK, &set1, NULL);*/
 
   current_if = STATS_IF;
-  sem_init(&sem1, 0, 1);
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
@@ -321,9 +326,6 @@ void TUI_stats_interface(){
 
   refresh();
 
-  cpu_usage_t *cpu_usage_var = (cpu_usage_t *)cpu_usage_alloc();
-  //cpu_usage(window3, cpu_usage_var);
-
   int char_input = getch();
   pthread_t t1;
 
@@ -337,28 +339,31 @@ void TUI_stats_interface(){
     char_input = getch();
     /*if(char_input != ERR) print_stats(window3, starting_process, starting_row);*/
     
-    /*for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
+    for (int k = 0; k < (NUM_PROCESSOR + 1); k++) {
       //wclear(window3);
       mvwprintw(window3, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
       wrefresh(window3);
-    }*/
-    wclear(window3);
-    wrefresh(window3);
+    }
+    //wclear(window3);
+    //wrefresh(window3);
 
     if(sem_getvalue(&sem1, &sval) == -1) exit(EXIT_FAILURE);
 
-    if(sval){//creo 1 thread alla volta solo se il semaforo è libero
+    //if(sval){//creo 1 thread alla volta solo se il semaforo è libero
       pthread_create(&t1, NULL, cpu_usage_thread_wrapper, (void *)targ1);
       pthread_detach(t1);
-      // pthread_join(t1, NULL);
-    }
+      //pthread_join(t1, NULL);
+    //}
 
     //cpu_usage(window3, cpu_usage_var);
 
   }
 
-  cpu_usage_free(cpu_usage_var);
-  sem_destroy(&sem1);
+  //pthread_join(t1, NULL);
+
+  //NB:devo stare attento all'ultimo thread se rimane ancora in running prima di chiudere le due righe di sotto è segm fault
+  //cpu_usage_free(cpu_usage_var);
+  //sem_destroy(&sem1);
   return;
 }
 
@@ -843,7 +848,7 @@ void refresh_UI(){
   box(window3, (int) '|', (int) '-');
 
   if(current_if == STATS_IF){
-    print_stats(window3, starting_process, starting_row);
+    //print_stats(window3, starting_process, starting_row);
   }else if(current_if != LIST_IF){
     print_proc(window3, starting_process, starting_row);
   }else{
@@ -857,7 +862,7 @@ void signal_handler(int sig){
   //TBD
   //stavo leggendo che non è una buona pratica installare un allarme così (a causa del context switch), informati... per ora lo implemento così per vedere se funziona
   refresh_UI();
-  //alarm(REFRESH_RATE);
+  alarm(REFRESH_RATE);
   //return;
 }
 
