@@ -418,6 +418,8 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
     percentage_bar(window, ROW_POS1, COL_POS1, cpu_usage_var->cpu_percentage[k]);
     wrefresh(window);
   }
+
+  mem_usage(window, OFFSET0 + ((NUM_PROCESSOR + 1) / MAX_COL) + 2, 2); //controlla
   return;
 }
 
@@ -645,6 +647,48 @@ void cpu_usage_free(cpu_usage_t* struct_ptr){
   free(struct_ptr->cpu_percentage);
   
   free(struct_ptr);
+
+  return;
+}
+
+void mem_usage(WINDOW *window, int starting_row, int starting_col){
+  FILE *fp;
+  char *buffer_line = NULL;
+  size_t lenght = 0;
+  char *cmd_token;
+  char *token;
+  long unsigned mem_total, mem_available;
+  double mem_usage_percentage; 
+  //mem_available:mem_total = x : 100
+  //1 - sopra
+
+  if ((fp = fopen(PROC_MEMINFO_PATH, "r")) == NULL) exit(EXIT_FAILURE);
+
+  while (getline(&buffer_line, &lenght, fp) != -1){
+    
+    cmd_token = strtok(buffer_line, SEPARATOR2);
+    token = strtok(NULL, SEPARATOR1);
+
+    if (!strcmp(cmd_token, "MemTotal")){
+      mem_total = strtoul(token, NULL, 10);
+    }else if (!strcmp(cmd_token, "MemAvailable")){
+      mem_available = strtoul(token, NULL, 10);
+      break;
+    }
+
+  }
+  if (mem_total == 0) return; //impossibile, ma meglio evitare segmentation fault
+
+  mem_usage_percentage = 100 - ((double) (mem_available*100) / (double) mem_total);
+
+  
+  mvwprintw(window, starting_row, starting_col, "MEM%%: %c", '\0');
+  percentage_bar(window, starting_row, starting_col + 10, mem_usage_percentage);
+
+  mvwprintw(window, starting_row +1, starting_col, "MEM-total:%ldkB MEM-used:%ldkB MEM-available:%ldkB %c", mem_total, mem_total - mem_available, mem_available, '\0');
+  // mvwprintw(window, starting_row+1, starting_col, "MEM%%:%0.2f%%  %c", mem_usage_percentage , '\0');
+
+  free(buffer_line);
 
   return;
 }

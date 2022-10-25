@@ -58,7 +58,6 @@
 #define INTERVAL_S 0
 
 //impaginazioni varie
-
 #define MAX_COL 4
 
 #define OFFSET0 3
@@ -115,6 +114,8 @@ void cpu_usage_free(cpu_usage_t *free);
 void cpu_snapshot(int time);
 void* cpu_snapshot_alloc(int time);
 void cpu_snapshot_free(cpu_snapshot_t* free);
+
+void mem_usage();
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C
