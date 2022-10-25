@@ -57,6 +57,19 @@
 #define INTERVAL_MS 500 * NANO_SECOND_MULTIPLIER; // NB: max 999
 #define INTERVAL_S 0
 
+//impaginazioni varie
+
+#define MAX_COL 4
+
+#define OFFSET0 3
+#define OFFSET1 2
+#define OFFSET2 30
+
+#define ROW_POS0 OFFSET0 + ((k - 1) / MAX_COL)
+#define COL_POS0 OFFSET1 + ((k - 1) % MAX_COL) * OFFSET2
+#define ROW_POS1 ROW_POS0
+#define COL_POS1 COL_POS0 + 10
+
 //struct
 
 typedef struct dirent dirent; //usato per non scrivere ogni volta "struct dirent", sono sfaticato
@@ -94,23 +107,22 @@ int is_pid(char* name);
 void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function);
 void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage);
 
-
-
-
-
 void cpu_usage();
+void *cpu_usage_thread_wrapper(void *arg);
 void* cpu_usage_alloc();
 void cpu_usage_free(cpu_usage_t *free);
-void* cpu_usage_thread_wrapper(void *arg);
 
-void* cpu_snapshot(int time);
+void cpu_snapshot(int time);
 void* cpu_snapshot_alloc(int time);
 void cpu_snapshot_free(cpu_snapshot_t* free);
 
-//var
+//var (extern)
 extern sem_t sem1; //dichiarata in TUI.C
 extern cpu_usage_t* cpu_usage_var;
 extern struct timespec sleep_value;
+
+extern cpu_snapshot_t* cpu_snapshot_t0;
+extern cpu_snapshot_t* cpu_snapshot_t1;
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 

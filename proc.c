@@ -2,8 +2,6 @@
 
 long number_of_processors = -1;
 
-
-
 long page_size = -1 ;// = sysconf(_SC_PAGESIZE);//https://man7.org/linux/man-pages/man2/getpagesize.2.html
 //Portable applications should employ sysconf(_Ssysinfo(system_information);sysinfo(system_information);C_PAGESIZE) instead of getpagesize():
 
@@ -407,10 +405,17 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 }
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
+  //si occupa di impaginare bene le colonne ecc
 
-  for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
+  mvwprintw(window, 1, 2, "CPU(TOT): %c", '\0');
+  percentage_bar(window, 1, 12, cpu_usage_var->cpu_percentage[0]);
+
+  for (int k = 1; k < (NUM_PROCESSOR + 1); k++){
     // wclear(window3);
-    mvwprintw(window, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
+    //mvwprintw(window, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
+
+    mvwprintw(window, ROW_POS0, COL_POS0, "CPU(%d): %c", (k - 1), '\0');
+    percentage_bar(window, ROW_POS1, COL_POS1, cpu_usage_var->cpu_percentage[k]);
     wrefresh(window);
   }
   return;
@@ -419,27 +424,27 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
 void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage){
 
   if(percentage >= 0 && percentage < 10){ // [########] 100%
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[..........]", percentage, '\0');  
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[..........]", percentage, '\0');  
   }else if(percentage >= 10 && percentage < 20){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#.........]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#.........]", percentage, '\0');
   }else if(percentage >= 20 && percentage < 30){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[##........]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[##........]", percentage, '\0');
   }else if(percentage >= 30 && percentage < 40){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[###.......]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[###.......]", percentage, '\0');
   }else if(percentage >= 40 && percentage < 50){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[####......]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[####......]", percentage, '\0');
   }else if(percentage >= 50 && percentage < 60){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#####.....]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#####.....]", percentage, '\0');
   }else if(percentage >= 60 && percentage < 70){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[######....]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[######....]", percentage, '\0');
   }else if(percentage >= 70 && percentage < 80){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#######...]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#######...]", percentage, '\0');
   }else if(percentage >= 80 && percentage < 90){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[########..]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[########..]", percentage, '\0');
   }else if(percentage >= 90 && percentage < 100){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[#########.]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#########.]", percentage, '\0');
   }else{
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f %% %c", "[##########]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[##########]", percentage, '\0');
   }
 
   wrefresh(window);
@@ -452,12 +457,12 @@ void cpu_usage(){
 
   //credits.https://stackoverflow.com/questions/7684359/how-to-use-nanosleep-in-c-what-are-tim-tv-sec-and-tim-tv-nsec
   
-  cpu_snapshot_t* cpu_snapshot_t0 = cpu_snapshot(0);
+  cpu_snapshot(0);
 
   if(nanosleep(&sleep_value, NULL) == -1 && errno == EINTR) exit(EXIT_FAILURE);
   if(nanosleep(&sleep_value, NULL) == -1 && errno == EINVAL) exit(EXIT_FAILURE);
 
-  cpu_snapshot_t* cpu_snapshot_t1 = cpu_snapshot(1);
+  cpu_snapshot(1);
 
   for (int k = 0; k < (NUM_PROCESSOR + 1); k++){
     cpu_usage_var->idle_time_diff_sec[k] = (double) cpu_snapshot_t1->idle_time_sec[k] - cpu_snapshot_t0->idle_time_sec[k];
@@ -469,32 +474,48 @@ void cpu_usage(){
       cpu_usage_var->cpu_percentage[k] = (double)0;
     }
   }
-
-  cpu_snapshot_free(cpu_snapshot_t0);
-  cpu_snapshot_free(cpu_snapshot_t1);
   
   return;
 }
 
 void* cpu_usage_thread_wrapper(void* arg){
 
-  sigset_t set1;
+  // l'idea è creare dei thread (detached), costantemente che creano un'istantanea al file /proc/stat allocandolo nelle apposite strutture e che poi viene aggiornato su cpu_usage_t (la differnza)
+  // nel mentre il programma principale continua a girare e ogni refresh stampa il contenuto della struttura
+  // devo usare i thread perché c'è bisogno di un delta-t (Dt) di tempo(calcolato in maniera del tutto euristica) per calcolare la differenza.
+  // se effettuassi lo snapshot/screenshot senza Dt (anche minimo) avrei gli stessi risultati nei due tempi di istantanea, inoltre Dt deve non essere eccessivamente piccolo per 2 motivi:
+  //il refresh-rete della UI, non ha senso calcolarlo ogni 1ns se la UI si aggiorna ogni s (deve -> al refresh-r): calcolerei delle info non mostrate a causa del RR
+  //e inoltre se troppo piccolo i calcoli verrebbero veramente piccoli come valore e questo potrebbe creare over/under flow oppure calcoli imprecisi perché "non si riesce a cogliere la differenza di utilizzo proporzionata al Dt bene"
 
+  //il Dt bloccherebbe il flusso di esecuzione del programma main, quindi tramite thread non viene bloccato e l'utente può continuare ad usare il programma
+
+  //i thread effettuano side-effect sulle strutture allocate
+
+  //non so se serve realmente bloccare dei segnali...
+  sigset_t set1;
   sigemptyset(&set1);
   sigaddset(&set1, SIGALRM);
   pthread_sigmask(SIG_SETMASK, &set1, NULL);
 
   sem_wait(&sem1);
-  cpu_usage(); 
+  cpu_usage(); //CS, 1 solo thread alla volta in writing (producer)
   sem_post(&sem1);
 
   return NULL;
 }
 
-void* cpu_snapshot(int time){
+void cpu_snapshot(int time){
 
-  cpu_snapshot_t* cpu_snap = cpu_snapshot_alloc(time);
-  
+  cpu_snapshot_t *cpu_snap;
+
+  if(time == 0){
+    cpu_snap = cpu_snapshot_t0;
+  }else if(time == 1){
+    cpu_snap = cpu_snapshot_t1;
+  }else{
+    return;
+  }
+
   int p = -1; 
   int i;
   FILE* fp;
@@ -559,7 +580,7 @@ void* cpu_snapshot(int time){
   fclose(fp);
   free(buffer_line);
 
-  return (void *) cpu_snap;
+  return;
 }
 
 void* cpu_snapshot_alloc(int time){

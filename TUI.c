@@ -6,7 +6,12 @@ WINDOW* window3;
 WINDOW* window4;
 
 sem_t sem1;
-cpu_usage_t *cpu_usage_var = NULL;
+pthread_t t1;
+
+cpu_usage_t* cpu_usage_var = NULL;
+
+cpu_snapshot_t* cpu_snapshot_t0 = NULL;
+cpu_snapshot_t* cpu_snapshot_t1 = NULL;
 
 struct timespec sleep_value = {0};
 
@@ -21,12 +26,18 @@ int max_y, max_x;
 int current_if =  DEFAULT_IF;
 
 void TUI_default_interface(){
-  
+
+  cpu_snapshot_t0 = cpu_snapshot_alloc(0);
+  cpu_snapshot_t1 = cpu_snapshot_alloc(1);
+
   sleep_value.tv_nsec = INTERVAL_MS;
   sleep_value.tv_sec = INTERVAL_S;
 
   sem_init(&sem1, 0, 1);
   cpu_usage_var = (cpu_usage_t *)cpu_usage_alloc();
+  
+  pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
+  pthread_detach(t1); // la inzializzo, non è aggiornata all'ultimo istante ma da l'impressione all'utente di averlo istantaneamente
 
   memset(&signal_handler_struct, 0, sizeof(struct sigaction));
   memset(&signal_handler_struct_old, 0, sizeof(struct sigaction));
@@ -178,6 +189,9 @@ void TUI_default_interface(){
   sem_destroy(&sem1);
   cpu_usage_free(cpu_usage_var);
 
+  cpu_snapshot_free(cpu_snapshot_t0);
+  cpu_snapshot_free(cpu_snapshot_t1);
+
   return;
 }
 
@@ -307,8 +321,6 @@ void TUI_stats_interface(){
 
   current_if = STATS_IF;
 
-  pthread_t t1;
-
   pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
   pthread_detach(t1);
 
@@ -325,7 +337,7 @@ void TUI_stats_interface(){
 
   wrefresh(window1);
   wrefresh(window3);
-  wrefresh(window4);
+  //wrefresh(window4);
 
   refresh();
   //non amo il do..while 
@@ -334,11 +346,12 @@ void TUI_stats_interface(){
   print_stats(window3, 0, 0);
 
   while( !(char_input == (int) 'b' || char_input == (int) 'B') ){
-    char_input = getch();
-    print_stats(window3, 0, 0);
-
+    
     pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
     pthread_detach(t1);
+
+    char_input = getch();
+    print_stats(window3, 0, 0);
   }
 
   return;
@@ -727,7 +740,7 @@ void TUI_kill_sleep_resume_interface(){
 
 void resize_term_custom(){ 
   //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
-  
+  //non funziona perfettamente, ma è accettabile
   int new_max_y, new_max_x;
   getmaxyx(stdscr, new_max_y, new_max_x);
 
@@ -801,6 +814,22 @@ void resize_term_custom(){
     wrefresh(window3);
     box(window3, (int) '|', (int) '-');
     wrefresh(window3);
+  }else if(current_if == STATS_IF){
+
+    wclear(window1);
+    box(window1, (int)'|', (int)'-');
+    mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+
+    wclear(window3);
+    wrefresh(window3);
+
+    mvwin(window3, 3, 0);
+    wresize(window3, max_y - 3, max_x);
+    box(window3, (int)'|', (int)'-');
+
+    wrefresh(window1);
+    wrefresh(window3);
+
   }//etc...
 
   refresh();
@@ -808,14 +837,6 @@ void resize_term_custom(){
 }
 
 void refresh_UI(){
-
-  
-  /*wclear(window3);
-  wrefresh(window3);
-  box(window3, (int)'|', (int)'-');
-  mvwprintw(window3, 1, 2, "TEST REFRESH %c", '\0');
-  wrefresh(window3);
-  return;*/
 
   if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
   //devo differenziare tra le le UI chiamanti
@@ -825,7 +846,7 @@ void refresh_UI(){
   box(window3, (int) '|', (int) '-');
 
   if(current_if == STATS_IF){
-    //print_stats(window3, starting_process, starting_row);
+    print_stats(window3, starting_process, starting_row);
   }else if(current_if != LIST_IF){
     print_proc(window3, starting_process, starting_row);
   }else{
