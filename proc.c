@@ -406,7 +406,8 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
   //si occupa di impaginare bene le colonne ecc
-
+  mem_usage(window, OFFSET0 + ((NUM_PROCESSOR + 1) / MAX_COL) + 2, 2); // controlla
+  
   mvwprintw(window, 1, 2, "CPU(TOT): %c", '\0');
   percentage_bar(window, 1, 12, cpu_usage_var->cpu_percentage[0]);
 
@@ -419,34 +420,34 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
     wrefresh(window);
   }
 
-  mem_usage(window, OFFSET0 + ((NUM_PROCESSOR + 1) / MAX_COL) + 2, 2); //controlla
+  
   return;
 }
 
 void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage){
 
   if(percentage >= 0 && percentage < 10){ // [########] 100%
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[..........]", percentage, '\0');  
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[..........]", percentage, '\0');  
   }else if(percentage >= 10 && percentage < 20){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#.........]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[#.........]", percentage, '\0');
   }else if(percentage >= 20 && percentage < 30){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[##........]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[##........]", percentage, '\0');
   }else if(percentage >= 30 && percentage < 40){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[###.......]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[###.......]", percentage, '\0');
   }else if(percentage >= 40 && percentage < 50){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[####......]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[####......]", percentage, '\0');
   }else if(percentage >= 50 && percentage < 60){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#####.....]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[#####.....]", percentage, '\0');
   }else if(percentage >= 60 && percentage < 70){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[######....]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[######....]", percentage, '\0');
   }else if(percentage >= 70 && percentage < 80){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#######...]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[#######...]", percentage, '\0');
   }else if(percentage >= 80 && percentage < 90){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[########..]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[########..]", percentage, '\0');
   }else if(percentage >= 90 && percentage < 100){
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[#########.]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[#########.]", percentage, '\0');
   }else{
-    mvwprintw(window, starting_row, starting_col, "%s %0.2f%%  %c", "[##########]", percentage, '\0');
+    mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[##########]", percentage, '\0');
   }
 
   wrefresh(window);
@@ -658,9 +659,11 @@ void mem_usage(WINDOW *window, int starting_row, int starting_col){
   char *cmd_token;
   char *token;
   long unsigned mem_total, mem_available;
-  double mem_usage_percentage; 
+  double mem_usage_percentage = 0; 
   //mem_available:mem_total = x : 100
   //1 - sopra
+  long unsigned swap_total, swap_free;
+  double swap_usage_percentage = 0;
 
   if ((fp = fopen(PROC_MEMINFO_PATH, "r")) == NULL) exit(EXIT_FAILURE);
 
@@ -673,22 +676,28 @@ void mem_usage(WINDOW *window, int starting_row, int starting_col){
       mem_total = strtoul(token, NULL, 10);
     }else if (!strcmp(cmd_token, "MemAvailable")){
       mem_available = strtoul(token, NULL, 10);
-      break;
+    }else if (!strcmp(cmd_token, "SwapTotal")){
+      swap_total = strtoul(token, NULL, 10);
+    }else if (!strcmp(cmd_token, "SwapFree")){
+      swap_free = strtoul(token, NULL, 10);
+      break; //evito altri cicli perché tanto non mi servono le righe successive
     }
 
   }
-  if (mem_total == 0) return; //impossibile, ma meglio evitare segmentation fault
 
-  mem_usage_percentage = 100 - ((double) (mem_available*100) / (double) mem_total);
+  if (mem_total != 0) mem_usage_percentage = 100 - ((double) (mem_available*100) / (double) mem_total);
+  if (swap_total != 0) swap_usage_percentage = 100 - ((double) (swap_free*100) / (double) swap_total);
 
-  
   mvwprintw(window, starting_row, starting_col, "MEM%%: %c", '\0');
   percentage_bar(window, starting_row, starting_col + 10, mem_usage_percentage);
+  mvwprintw(window, starting_row + 1, starting_col, "MEM-total:%0.2fGB MEM-used:%0.2fGB MEM-available:%0.2fGB %c", ((double)mem_total / (double)KB_TO_GB), ((double)(mem_total - mem_available) / (double)KB_TO_GB), ((double) mem_available / (double)KB_TO_GB), '\0');
 
-  mvwprintw(window, starting_row +1, starting_col, "MEM-total:%ldkB MEM-used:%ldkB MEM-available:%ldkB %c", mem_total, mem_total - mem_available, mem_available, '\0');
-  // mvwprintw(window, starting_row+1, starting_col, "MEM%%:%0.2f%%  %c", mem_usage_percentage , '\0');
+  mvwprintw(window, starting_row + 3, starting_col, "SWAP%%: %c", '\0');
+  percentage_bar(window, starting_row + 3, starting_col + 10, swap_usage_percentage);
+  mvwprintw(window, starting_row + 4, starting_col, "SWAP-total:%0.2fGB SWAP-used:%0.2fGB SWAP-free:%0.2fGB %c", ((double)swap_total / (double)KB_TO_GB), ((double)(swap_total - swap_free) / (double)KB_TO_GB), ((double) swap_free / (double)KB_TO_GB), '\0');
 
   free(buffer_line);
+  fclose(fp);
 
   return;
 }

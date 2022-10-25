@@ -58,7 +58,7 @@
 #define INTERVAL_S 0
 
 //impaginazioni varie
-#define MAX_COL 4
+#define MAX_COL 3
 
 #define OFFSET0 3
 #define OFFSET1 2
@@ -68,6 +68,9 @@
 #define COL_POS0 OFFSET1 + ((k - 1) % MAX_COL) * OFFSET2
 #define ROW_POS1 ROW_POS0
 #define COL_POS1 COL_POS0 + 10
+
+//altro
+#define KB_TO_GB 1000000
 
 //struct
 
