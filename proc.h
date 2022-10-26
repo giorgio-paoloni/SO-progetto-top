@@ -17,6 +17,7 @@
 #include <semaphore.h>
 #include <signal.h>
 #include <errno.h>
+#include <sys/ioctl.h>
 
 #undef _POSIX_C_SOURCE //https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-closedir-close-directory
 
@@ -127,6 +128,9 @@ extern struct timespec sleep_value;
 
 extern cpu_snapshot_t* cpu_snapshot_t0;
 extern cpu_snapshot_t* cpu_snapshot_t1;
+extern struct winsize size;
+/*extern int max_y;
+extern int max_x;*/
 
 //cosa mostra top? https://www.booleanworld.com/guide-linux-top-command/
 

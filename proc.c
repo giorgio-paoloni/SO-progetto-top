@@ -338,7 +338,7 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 
   int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
 
-  int max_y = getmaxy(window);
+  int max_y = getmaxy(window); //??controlla, non aggiornato IRT
 
   if(calling_function == PRINT_PROC){
     mvwprintw(window, 1, 2, "%s %c", "| PID | pid_path | cmdline |", '\0'); //https://stackoverflow.com/questions/23924497/how-to-fix-gcc-wall-embedded-0-in-format-warning

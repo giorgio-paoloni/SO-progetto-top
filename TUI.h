@@ -53,3 +53,12 @@ void signal_handler(int sig);
 
 #define HELP_PRINT "Questo programma e' stato scritto da Giorgio Paoloni 1883570, replica di Top, non a caso si chiama Bot. \nOgni schermata di puo' scorrere con le frecce su e giu' I comandi implementati sono: \n 1)kill per uccidere un processo tramite PID\n2)sleep per addormentare un processo tramite PID \n3)resume per risvegliare un processo tramite PID \n2)list per ottenere una list completa e avanzata di tutti i processi \n3)stats info cumulative dei PID\n "
 
+//DIM WINDOW, non utilizzate particolarmente...
+#define WINDOW1_Y 3
+#define WINDOW1_X 3
+
+#define WINDOW3_Y 3
+#define WINDOW3_X 3
+
+#define WINDOW4_Y 3
+#define WINDOW4_X 3

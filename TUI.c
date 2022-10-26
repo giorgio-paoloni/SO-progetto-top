@@ -1,5 +1,7 @@
 #include "TUI.h"
 
+struct winsize size;
+
 WINDOW* window1;
 WINDOW* window2;
 WINDOW* window3;
@@ -25,7 +27,10 @@ int max_y, max_x;
 
 int current_if =  DEFAULT_IF;
 
+char window_input[WINDOW_INPUT_LENGHT]; // PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
+
 void TUI_default_interface(){
+  
 
   cpu_snapshot_t0 = cpu_snapshot_alloc(0);
   cpu_snapshot_t1 = cpu_snapshot_alloc(1);
@@ -45,7 +50,8 @@ void TUI_default_interface(){
   signal_handler_struct.sa_flags = 0;
   sigemptyset(&signal_handler_struct.sa_mask);
 
-  if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) perror("errore installazione sigaction!");
+  if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) exit(EXIT_FAILURE);
+  if(sigaction(SIGWINCH, &signal_handler_struct, &signal_handler_struct_old) == -1 ) exit(EXIT_FAILURE);
 
   int char_input;
 
@@ -59,7 +65,6 @@ void TUI_default_interface(){
   //getyx(stdscr, y, x);//stdscr e' di ncurses, la funzione ottiene la posizione del cursore nella finestra (0,0)
   use_default_colors();// https://invisible-island.net/ncurses/man/default_colors.3x.html
   getmaxyx(stdscr, max_y, max_x);//ottiene la dimensione massima attuale della finestra di terminale
-
   //questi 2 valori possono essere utili per avere delle posizioni e dimensioni relative alla finestra di terminale, "responsive design",...
 
   refresh();
@@ -99,12 +104,6 @@ void TUI_default_interface(){
   while(1){
 
     current_if = DEFAULT_IF;
-
-    if(is_term_resized(max_y, max_x)){
-      resize_term_custom();
-      print_proc(window3, starting_process, starting_row);
-      getmaxyx(stdscr, max_y, max_x);
-    }
 
     //avrei potuto usare switch-case, ma non mi piace
     char_input = getch();
@@ -346,7 +345,13 @@ void TUI_stats_interface(){
   print_stats(window3, 0, 0);
 
   while( !(char_input == (int) 'b' || char_input == (int) 'B') ){
-    
+
+    if (is_term_resized(max_y, max_x)){
+      resize_term_custom();
+      print_proc(window3, starting_process, starting_row);
+      getmaxyx(stdscr, max_y, max_x);
+    }
+
     pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
     pthread_detach(t1);
 
@@ -589,8 +594,7 @@ void TUI_kill_sleep_resume_interface(){
   wrefresh(window4);
 
   refresh();
-
-  char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
+  
   memset(window_input,0,WINDOW_INPUT_LENGHT);
 
   int  j = 0;
@@ -608,7 +612,7 @@ void TUI_kill_sleep_resume_interface(){
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
-    if(is_term_resized(max_y, max_x)){
+    /*if(is_term_resized(max_y, max_x)){
       resize_term_custom(window1, window2, window3, window4, max_y, max_x, current_if);
 
       if(j == 0){
@@ -632,7 +636,7 @@ void TUI_kill_sleep_resume_interface(){
 
       getmaxyx(stdscr, max_y, max_x);
       continue;
-    }
+    }*/
 
     if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
       window_input[0] = 'b';
@@ -741,99 +745,123 @@ void TUI_kill_sleep_resume_interface(){
 void resize_term_custom(){ 
   //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
   //non funziona perfettamente, ma è accettabile
-  int new_max_y, new_max_x;
-  getmaxyx(stdscr, new_max_y, new_max_x);
+
+  //getmaxyx(stdscr, max_y, max_x);
+  //credits. https://stackoverflow.com/questions/1811955/ncurses-terminal-size
+  //getmaxyx ottiene dei valori non aggiornati IRT durante il resize, invece ioctl riesce ad aggiornare immediatamente i valori
+  //questo crea altri problemi che i resize non funzionano bene per dimensioni maggiorate (crash) da capire come fare...
+  
+  if (ioctl(0, TIOCGWINSZ, (char *)&size) < 0) printf("TIOCGWINSZ error");
+
+  //wresize(stdscr, size.ws_row, size.ws_col); //non funziona bene
+  // problemi ncurses e resize asyncroni 
+  //credits.https://stackoverflow.com/questions/13707137/resizing-glitch-with-ncurses?rq=1
+  // credits.https://linux.die.net/man/3/resize_term
+  //leggendo dal man praticamente il getmaxyx ecc vengono applicati quando il getch ottiene KEY_RESIZE come valore, ma questo non può accadere nella nostra versione che funziona tramite interrupt (SIGWINCH) asincrono
+  //quindi un metodo è ottenere i val da ioctl e usare le righe qua sotto
+  resizeterm(size.ws_row, size.ws_col);
+  getmaxyx(stdscr, max_y, max_x);
+  refresh();//importante
 
   wclear(window1);
-  //wclear(window2);
   wclear(window3);
   wclear(window4);
 
   wrefresh(window1);
-  //wrefresh(window2);
   wrefresh(window3);
   wrefresh(window4);
 
+  /*//DEBUG
+  mvwprintw(window1, 1, 1, "LINES = %d, COLS = %d", max_y, max_x);
+  wrefresh(window1);
+  return;*/
+
   if(current_if == DEFAULT_IF){
-    wresize(window1, 3, new_max_x);
-    mvwin(window1, 0, 0);
-    wrefresh(window1);
+
+    wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int) '|', (int) '-');
-
     mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats", '\0');
-
-    //mvwprintw(window1, 1, 2, "RESIZED"); //TEST
     wrefresh(window1);
 
-    wresize(window3, new_max_y-3, new_max_x);
-    mvwin(window3, 3, 0);
-    wrefresh(window3);
+    wresize(window3, max_y-3, max_x);
     box(window3, (int) '|', (int) '-');
     wrefresh(window3);
+
+    print_proc(window3, starting_process, starting_row);
 
   }else if(current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF ){
-    wresize(window1, 3, new_max_x);
-    mvwin(window1, 0, 0);
-    wrefresh(window1);
+    wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int) '|', (int) '-');
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     wrefresh(window1);
 
-    wresize(window3, new_max_y-6, new_max_x);
-    mvwin(window3, 6, 0);
-    wrefresh(window3);
+    wresize(window3, max_y-6, max_x);
     box(window3, (int) '|', (int) '-');
     wrefresh(window3);
 
-    wresize(window4, 3, new_max_x);
-    mvwin(window4, 3, 0);
-    wrefresh(window4);
+    print_proc(window3, starting_process, starting_row);
+
+    wresize(window4, WINDOW4_Y, max_x);
     box(window4, (int) '|', (int) '-');
-    //mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
+
+    //RICONTROLLA!!
+    if(window_input[0] == (char) KEY_RESIZE){
+
+      if(current_if == KILL_IF){
+        mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
+      }else if(current_if == SLEEP_IF){
+        mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
+      }else{
+        mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
+      }
+
+    }else{
+      //window_input[strlen(window_input) - 1] = '\0'; // evita caratteri sporchi, controlla bene 
+      mvwprintw(window4, 1, 2, "PID: ");
+      mvwprintw(window4, 1, 7, "%s", window_input);
+    }
+
     wrefresh(window4);
+
   }else if(current_if == EASTEREGG_IF){
 
+    wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int)'|', (int)'-');
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     wrefresh(window1);
+
+    wresize(window3, max_y - 6, max_x);
+    box(window3, (int)'|', (int)'-');
+    wrefresh(window3);
 
   }else if(current_if == LIST_IF){
-    //da sistemare
-    wresize(window1, 3, new_max_x);
-    mvwin(window1, 0, 0);
-    wrefresh(window1);
+    wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int) '|', (int) '-');
-    wrefresh(window1);
-    
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
-    
     wrefresh(window1);
 
-    wresize(window3, new_max_y-3, new_max_x);
-    mvwin(window3, 3, 0);
-    wrefresh(window3);
+    wresize(window3, max_y-3, max_x);
     box(window3, (int) '|', (int) '-');
     wrefresh(window3);
+
+    print_proc_advanced(window3, starting_process, starting_row);
+
   }else if(current_if == STATS_IF){
 
-    wclear(window1);
+    wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int)'|', (int)'-');
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+    wrefresh(window1);
 
-    wclear(window3);
-    wrefresh(window3);
-
-    mvwin(window3, 3, 0);
     wresize(window3, max_y - 3, max_x);
     box(window3, (int)'|', (int)'-');
-
-    wrefresh(window1);
     wrefresh(window3);
+
+    print_stats(window3, starting_process, starting_row);
 
   }//etc...
 
-  refresh();
-  
+  //refresh();
 }
 
 void refresh_UI(){
@@ -859,9 +887,17 @@ void refresh_UI(){
 void signal_handler(int sig){
   //TBD
   //stavo leggendo che non è una buona pratica installare un allarme così (a causa del context switch), informati... per ora lo implemento così per vedere se funziona
-  refresh_UI();
+
+  if(sig == SIGALRM){
+    refresh_UI();
+  }else if(sig == SIGWINCH){
+    resize_term_custom();
+  }
+
   alarm(REFRESH_RATE);
-  //return;
+  //tecnicamente dovrei rilanciarlo solo ogni SIGALRM ma ho paura che i segnali essendo asincroni possano accavallarsi e non venire richiamato
+  //es.mi arrivano istantaneamente SIGWINCH e SIGALARM e SIGALARM venisse scartato, non verrebbe richiamato il refresh
+  return;
 }
 
 void print_easteregg(int i){
@@ -901,4 +937,3 @@ void print_easteregg(int i){
   fclose(file);
 
 }
-
