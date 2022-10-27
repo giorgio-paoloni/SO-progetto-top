@@ -40,7 +40,7 @@ void signal_handler(int sig);
 #define HELP_IF 7
 #define EASTEREGG_IF 8
 
-//altro
+//altro 
 #define WINDOW_INPUT_LENGHT 32
 #define REFRESH_RATE 1
 #define BUF_LENGHT1 2048

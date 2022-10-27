@@ -18,6 +18,8 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/utsname.h>
+#include <regex.h>
 
 #undef _POSIX_C_SOURCE //https://www.ibm.com/docs/en/zos/2.2.0?topic=functions-closedir-close-directory
 
@@ -69,9 +71,20 @@
 #define COL_POS0 OFFSET1 + ((k - 1) % MAX_COL) * OFFSET2
 #define ROW_POS1 ROW_POS0
 #define COL_POS1 COL_POS0 + 10
+#define ROW_POS2 OFFSET0 + ((NUM_PROCESSOR + 1) / MAX_COL) + 2
+#define COL_POS2 2
+#define ROW_POS3 ROW_POS2 + 6
+#define COL_POS3 2
 
 //altro
 #define KB_TO_GB 1000000
+
+//REGEX PATTERN
+
+#define PATTERN_REGEX1 "[:word:]"
+#define PATTERN_REGEX2 "^[a-zA-Z0-9_]*$"
+//https://en.wikibooks.org/wiki/Regular_Expressions/POSIX_Basic_Regular_Expressions
+//https://stackoverflow.com/questions/336210/regular-expression-for-alphanumeric-and-underscores
 
 //struct
 
@@ -120,6 +133,8 @@ void* cpu_snapshot_alloc(int time);
 void cpu_snapshot_free(cpu_snapshot_t* free);
 
 void mem_usage();
+
+void find_process(WINDOW* window, int starting_index, char* string_to_compare);
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C

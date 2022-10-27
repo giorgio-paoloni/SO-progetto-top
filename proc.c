@@ -5,6 +5,8 @@ long number_of_processors = -1;
 long page_size = -1 ;// = sysconf(_SC_PAGESIZE);//https://man7.org/linux/man-pages/man2/getpagesize.2.html
 //Portable applications should employ sysconf(_Ssysinfo(system_information);sysinfo(system_information);C_PAGESIZE) instead of getpagesize():
 
+regex_t regex_var;
+
 void print_proc(WINDOW* window, int starting_index, int starting_row){
   cumulative_print_proc(window, starting_index, starting_row, PRINT_PROC);
 }
@@ -406,27 +408,27 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 
 void print_stats(WINDOW *window, int starting_index, int starting_row){
   //si occupa di impaginare bene le colonne ecc
-  mem_usage(window, OFFSET0 + ((NUM_PROCESSOR + 1) / MAX_COL) + 2, 2); // controlla
-  
+  mem_usage(window, ROW_POS2, COL_POS2); //sta sotto, però lo carico prima perché è un'info disponibile subito (a diff di cpu_usage)
+
   mvwprintw(window, 1, 2, "CPU(TOT): %c", '\0');
   percentage_bar(window, 1, 12, cpu_usage_var->cpu_percentage[0]);
 
   for (int k = 1; k < (NUM_PROCESSOR + 1); k++){
     // wclear(window3);
     //mvwprintw(window, k + 1, 2, "CPU: %d Usage: %0.2f %c", (k - 1), cpu_usage_var->cpu_percentage[k], '\0');
-
     mvwprintw(window, ROW_POS0, COL_POS0, "CPU(%d): %c", (k - 1), '\0');
     percentage_bar(window, ROW_POS1, COL_POS1, cpu_usage_var->cpu_percentage[k]);
-    wrefresh(window);
+    
   }
 
-  
+  wrefresh(window);
+
   return;
 }
 
 void percentage_bar(WINDOW *window, int starting_row, int starting_col, double percentage){
 
-  if(percentage >= 0 && percentage < 10){ // [########] 100%
+  if(/*percentage >= 0 && */percentage < 10){ // [########] 100%
     mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[..........]", percentage, '\0');  
   }else if(percentage >= 10 && percentage < 20){
     mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[#.........]", percentage, '\0');
@@ -462,8 +464,7 @@ void cpu_usage(){
   
   cpu_snapshot(0);
 
-  if(nanosleep(&sleep_value, NULL) == -1 && errno == EINTR) exit(EXIT_FAILURE);
-  if(nanosleep(&sleep_value, NULL) == -1 && errno == EINVAL) exit(EXIT_FAILURE);
+  if(nanosleep(&sleep_value, NULL) == -1 && ( errno == EINTR || errno == EINVAL)) exit(EXIT_FAILURE); //errore se interrupt o valore non valido
 
   cpu_snapshot(1);
 
@@ -700,4 +701,141 @@ void mem_usage(WINDOW *window, int starting_row, int starting_col){
   fclose(fp);
 
   return;
+}
+
+void find_process_2(WINDOW* window, int starting_index, char* string_to_compare){
+  if(regcomp(&regex_var, string_to_compare, 0) != 0) exit(EXIT_FAILURE);
+
+  DIR *proc_dir;
+  if ((proc_dir = opendir(PROC_PATH)) == NULL) return;
+
+  dirent *proc_iter;
+  FILE *file_cmdline;
+
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char pid_path[PID_PATH_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+
+  int i = 1, j = 0; // i indica la riga (della finestra) dove stampare, j il processo
+
+  int max_y = getmaxy(window); 
+
+  while ((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1)){
+
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+    memset(pid_path, 0, PID_PATH_LENGHT);
+
+    if (is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
+
+      strcpy(pid_cmdline, PROC_PATH);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
+      strcat(pid_cmdline, "/");
+
+      strcat(pid_path, pid_cmdline);
+
+      strcat(pid_cmdline, "cmdline");
+      strcat(pid_cmdline, "\0");
+
+      file_cmdline = fopen(pid_cmdline, "r");
+
+      if (file_cmdline == NULL){ // err file
+        fclose(file_cmdline);
+        continue;
+      }
+
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
+
+      fclose(file_cmdline);
+
+      if (strcmp(buffer_cmdline, "\0") == 0) continue; // cmdline vuoto, pid di un processo senza cmdline
+      strtok(buffer_cmdline, SEPARATOR2);
+      
+      if(j >= starting_index && regexec(&regex_var, buffer_cmdline,  0, NULL, 0) == 0){
+        //match con la regex
+        mvwprintw(window, i, 1, "%s %s %c", proc_iter->d_name, buffer_cmdline, '\0');
+        box(window, (int)'|', (int)'-');
+        wrefresh(window);
+        i++;
+      }
+
+      j++;
+
+    }
+  }
+
+  closedir(proc_dir);
+  return;
+}
+
+void find_process(WINDOW* window, int starting_index, char* string_to_compare){
+  if(regcomp(&regex_var, string_to_compare, 0) != 0) exit(EXIT_FAILURE);
+
+  DIR* proc_dir;
+  if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+  
+  dirent* proc_iter;
+  FILE* file_cmdline;
+
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char pid_path[PID_PATH_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+
+  int i = 1, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
+
+  //mvwprintw(window, 1, 1, "%s %c", "PID | cmdline", '\0');
+
+  int max_y = getmaxy(window); //??controlla, non aggiornato IRT
+
+  while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
+
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+    memset(pid_path, 0, PID_PATH_LENGHT);
+
+    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
+
+      strcpy(pid_cmdline, PROC_PATH);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
+      strcat(pid_cmdline, "/");
+
+      strcat(pid_path, pid_cmdline);
+
+      strcat(pid_cmdline, "cmdline");
+      strcat(pid_cmdline, "\0");
+
+      file_cmdline = fopen(pid_cmdline, "r");
+
+      if(file_cmdline == NULL){//err file
+        fclose(file_cmdline);
+        continue;
+      }
+      
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
+
+      fclose(file_cmdline);
+      
+
+      if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
+      strtok(buffer_cmdline, SEPARATOR2);
+      
+      if(j >= starting_index){
+
+        if(regexec(&regex_var, buffer_cmdline,  0, NULL, 0) == 0){
+          //match con la regex
+          mvwprintw(window, i, 1, "%s %s %c", proc_iter->d_name, buffer_cmdline, '\0');
+          box(window, (int)'|', (int)'-');
+          wrefresh(window);
+          i++;
+        }
+
+      }
+      
+      j++;
+    }
+  }
+
+  closedir(proc_dir);
 }

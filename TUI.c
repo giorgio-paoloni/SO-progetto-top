@@ -8,10 +8,10 @@ WINDOW* window3;
 WINDOW* window4;
 
 sem_t sem1;
+int sem1_val;
 pthread_t t1;
 
 cpu_usage_t* cpu_usage_var = NULL;
-
 cpu_snapshot_t* cpu_snapshot_t0 = NULL;
 cpu_snapshot_t* cpu_snapshot_t1 = NULL;
 
@@ -31,7 +31,6 @@ char window_input[WINDOW_INPUT_LENGHT]; // PID lungo  massimo WINDOW_INPUT_LENGH
 
 void TUI_default_interface(){
   
-
   cpu_snapshot_t0 = cpu_snapshot_alloc(0);
   cpu_snapshot_t1 = cpu_snapshot_alloc(1);
 
@@ -138,10 +137,9 @@ void TUI_default_interface(){
     }else if(char_input == (int) 'e' || char_input == (int) 'E'){//easter-egg, vorrei implementare un qualcosa alla sl https://github.com/mtoyoda/sl
       //TBD
       TUI_easteregg_inferface();
-      //sleep(5);
       reset_to_default_interface();
     }else if(char_input == (int) 'f' || char_input == (int) 'F'){
-      //TUI_find_interface();
+      TUI_find_interface();
       reset_to_default_interface();
     }else if (char_input == KEY_UP){
 
@@ -214,16 +212,11 @@ void TUI_help_interface(){
   current_if = HELP_IF;
 
   wclear(window1);
-  wrefresh(window1);
   box(window1, (int) '|', (int) '-');
   mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
   wrefresh(window1);
 
   wclear(window3);
-  wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-
-  mvwin(window3, 3, 0);
-  wresize(window3, max_y-3, max_x);
   box(window3, (int) '|', (int) '-');
   mvwprintw(window3, 1, 2, HELP_PRINT);
   wrefresh(window3);
@@ -234,7 +227,6 @@ void TUI_help_interface(){
     char_input = getch();
   }
 
-  refresh();
   return;
 }
 
@@ -247,33 +239,16 @@ void TUI_list_interface(){
   mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
   wrefresh(window1);
 
-  wclear(window2);
-  wrefresh(window2);
 
-  mvwin(window3, 3, 0);
-  wresize(window3, max_y-3, max_x);
   wclear(window3);
-  wrefresh(window3);
   box(window3, (int) '|', (int) '-'); 
-
   print_proc_advanced(window3, starting_process, starting_row);
-
   wrefresh(window3);
-
-  //nodelay(stdscr, false);
-  //keypad(stdscr, true);
 
   int char_input = getch();
 
   while(!(char_input == (int) 'b' || char_input == (int) 'B')){
     
-
-    if(is_term_resized(max_y, max_x)){
-      resize_term_custom();
-      print_proc_advanced(window3, starting_process, starting_row);
-      getmaxyx(stdscr, max_y, max_x);
-    }
-
     //ciclica
     if (char_input == KEY_UP){
 
@@ -311,8 +286,6 @@ void TUI_list_interface(){
     char_input = getch();
   }
 
-  //nodelay(stdscr, true);
-  //keypad(stdscr, false);
   return;
 }
 
@@ -326,37 +299,28 @@ void TUI_stats_interface(){
   wclear(window1);
   box(window1, (int) '|', (int) '-');
   mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+  wrefresh(window1);
 
   wclear(window3);
-  wrefresh(window3);
 
-  mvwin(window3, 3, 0);
-  wresize(window3, max_y-3, max_x);
   box(window3, (int) '|', (int) '-');
-
-  wrefresh(window1);
   wrefresh(window3);
-  //wrefresh(window4);
 
-  refresh();
   //non amo il do..while 
   int char_input = (int) ' '; //valore a caso... ma diverso da B o b
 
-  print_stats(window3, 0, 0);
-
   while( !(char_input == (int) 'b' || char_input == (int) 'B') ){
+    print_stats(window3, 0, 0);
 
-    if (is_term_resized(max_y, max_x)){
-      resize_term_custom();
-      print_proc(window3, starting_process, starting_row);
-      getmaxyx(stdscr, max_y, max_x);
+    if(sem_getvalue(&sem1, &sem1_val) == -1) exit(EXIT_FAILURE);
+
+    if(sem1_val){ //evito di generare troppi thread se tanto il semaforo è bloccato
+      pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
+      pthread_detach(t1);
     }
 
-    pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
-    pthread_detach(t1);
-
     char_input = getch();
-    print_stats(window3, 0, 0);
+  
   }
 
   return;
@@ -416,65 +380,56 @@ void TUI_find_interface(){
 
   wclear(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+  mvwprintw(window1, 1, 2, "%s %c", "INVIO per terminare la digitazione...", '\0');
+  wrefresh(window1);
 
   wclear(window3);
-  wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-
+  //wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
   wresize(window3, max_y-6, max_x);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
   //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
-
   mvwin(window3, 6, 0);
-  wrefresh(window3);
-
   box(window3, (int) '|', (int) '-');
   wrefresh(window3);
 
-  mvwprintw(window3, 1, 2, "test2 in\n");
+  //print_proc(window3, 0, 0);
 
   box(window4, (int) '|', (int) '-');
-
-  print_proc(window3, 0, 0);
-
-  wrefresh(window1);
-  wrefresh(window3);
+  mvwprintw(window4, 1, 2, "Processo: (Digita il nome del processo da cercare, invio per confermare)");
   wrefresh(window4);
-
-  refresh();
-
-  char window_input[WINDOW_INPUT_LENGHT]; //PID lungo  massimo WINDOW_INPUT_LENGHT caratteri
 
   int j = 0;
-  
   memset(window_input,0,WINDOW_INPUT_LENGHT);
 
-  mvwprintw(window4, 1, 2, "PID/Processo: (Digita il PID o il nome del processo da cercare, invio per confermare)");
-  wrefresh(window4);
-
+  find_process(window3, starting_process, window_input);
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
-    if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
-      window_input[0] = 'b';
-      break;
-    }
-
-    if(j>0 && (window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
+    if((window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
+      if(j == 0){
+        window_input[j] = '\0'; // evita caratteri sporchi
+        continue;
+      }
 
       window_input[j] = '\0'; //evita caratteri sporchi
       window_input[j-1] = '\0';//cancella il carattere precedente
 
       wclear(window4);
       box(window4, (int) '|', (int) '-');
-      wrefresh(window4);
-      mvwprintw(window4, 1, 2, "PID/Processo: ");
-      mvwprintw(window4, 1, 7, "%s", window_input);
+      mvwprintw(window4, 1, 2, "Processo: ");
+      mvwprintw(window4, 1, 15, "%s", window_input);
       wrefresh(window4);
       j--;
+
+      wclear(window3);
+      wrefresh(window3);
+      // find_process(window3, -1, window_input);
+      find_process(window3, starting_process, window_input);
       continue;
     }
 
     if (window_input[j] == (char) KEY_UP){ //cast a char importante
+
+      window_input[j] = '\0';
 
       if(starting_process > 0){
         starting_process--;
@@ -491,11 +446,12 @@ void TUI_find_interface(){
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
-      print_proc(window3, starting_process, starting_row);
+      // find_process(window3, -1, window_input);
+      find_process(window3, starting_process, window_input);
       continue;
 
     }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
-
+      window_input[j] = '\0';
       starting_process = (starting_process+1)%current_number_of_processes();
       starting_row = (starting_row+1)%max_y;
 
@@ -503,37 +459,46 @@ void TUI_find_interface(){
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
 
-      print_proc(window3, starting_process, starting_row);
+      // find_process(window3, -1, window_input);
+      find_process(window3, starting_process, window_input);
+
       continue;
-    }
+    }else if(!( (window_input[j] >= '0' && window_input[j] <= '9') ||( (window_input[j] >= 'A' && window_input[j] <= 'Z') ) ||  (window_input[j] >= 'a' && window_input[j] <= 'z') ) ){
+      continue; //non è alpha-numerico
+    } 
 
     //if(window_input[j] < '0' || window_input[j] > '9') continue; //controllo PID, e' SOLO numerico
+    
+    wclear(window3);
+    wrefresh(window3);
+    //find_process(window3, -1, window_input);
+    find_process(window3, starting_process, window_input);
 
     wclear(window4);
     box(window4, (int) '|', (int) '-');
     wrefresh(window4);
-    mvwprintw(window4, 1, 2, "PID/Processo: ");
-    mvwprintw(window4, 1, 15, "%s", window_input);
+    mvwprintw(window4, 1, 2, "Processo: ");
+    mvwprintw(window4, 1, 15, "%s %c", window_input, '\0');
     wrefresh(window4);
     j++;
   }
 
-  //nodelay(stdscr, true);
+  window_input[j] = '\0';
+  wclear(window1);
+  box(window1, (int)'|', (int)'-');
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+  wrefresh(window1);
+  wclear(window4);
+  wrefresh(window4);
 
-  if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
-    /*if(kill_PID(atoi(window_input)) == -1){//err
-      mvwprintw(window4, 1, j+8, "non ucciso");
-    }else{
-      mvwprintw(window4, 1, j+8, "ucciso");
-    }
-    wrefresh(window4);*/
+  wclear(window3);
+  wresize(window3, max_y - 3, max_x);
+  mvwin(window3, 3, 0);
+  box(window3, (int)'|', (int)'-');
+  wrefresh(window3);
+  find_process(window3, starting_process, window_input);
 
-    mvwprintw(window4, 1, j+8, "Risultati ricerca:");
-
-    window_input[0] = getch();
-  }
-
-  while(!(window_input[0] == '\n' || window_input[0] == 'b'|| window_input[0] == 'B')){
+  while(!( window_input[0] == 'b'|| window_input[0] == 'B')){
     window_input[0] = getch();
   }
   return;
@@ -776,6 +741,10 @@ void resize_term_custom(){
   wrefresh(window1);
   return;*/
 
+  //resize crea crash se le dimensioni sono troppo piccole es 2, poiché win3 è y 2-3 = -1 e crasha il resize
+  //https://linux.die.net/man/3/wresize (>= 0)
+  //da sistemare, caso verametne degenere
+
   if(current_if == DEFAULT_IF){
 
     wresize(window1, WINDOW1_Y, max_x);
@@ -866,7 +835,7 @@ void resize_term_custom(){
 
 void refresh_UI(){
 
-  if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
+  if(current_if == HELP_IF || current_if == EASTEREGG_IF || current_if == FIND_IF ) return;
   //devo differenziare tra le le UI chiamanti
   
   wclear(window3);
@@ -875,10 +844,12 @@ void refresh_UI(){
 
   if(current_if == STATS_IF){
     print_stats(window3, starting_process, starting_row);
-  }else if(current_if != LIST_IF){
-    print_proc(window3, starting_process, starting_row);
-  }else{
+  }else if(current_if == LIST_IF){
     print_proc_advanced(window3, starting_process, starting_row);
+  }else if(current_if == DEFAULT_IF || current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF){
+    print_proc(window3, starting_process, starting_row);
+  }else {
+    //print_proc(window3, starting_process, starting_row);
   }
 
   return;
@@ -890,11 +861,12 @@ void signal_handler(int sig){
 
   if(sig == SIGALRM){
     refresh_UI();
+    alarm(REFRESH_RATE);
   }else if(sig == SIGWINCH){
     resize_term_custom();
   }
 
-  alarm(REFRESH_RATE);
+  
   //tecnicamente dovrei rilanciarlo solo ogni SIGALRM ma ho paura che i segnali essendo asincroni possano accavallarsi e non venire richiamato
   //es.mi arrivano istantaneamente SIGWINCH e SIGALARM e SIGALARM venisse scartato, non verrebbe richiamato il refresh
   return;
