@@ -294,7 +294,6 @@ int current_number_of_processes(){ //testa memory leak ecc
       file_cmdline = fopen(pid_cmdline, "r");
 
       if(file_cmdline == NULL){
-        fclose(file_cmdline);
         //memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
         continue;
       }
@@ -370,7 +369,6 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
       file_cmdline = fopen(pid_cmdline, "r");
 
       if(file_cmdline == NULL){//err file
-        fclose(file_cmdline);
         continue;
       }
       
@@ -703,78 +701,14 @@ void mem_usage(WINDOW *window, int starting_row, int starting_col){
   return;
 }
 
-void find_process_2(WINDOW* window, int starting_index, char* string_to_compare){
-  if(regcomp(&regex_var, string_to_compare, 0) != 0) exit(EXIT_FAILURE);
-
-  DIR *proc_dir;
-  if ((proc_dir = opendir(PROC_PATH)) == NULL) return;
-
-  dirent *proc_iter;
-  FILE *file_cmdline;
-
-  char pid_cmdline[PID_CMDLINE_LENGHT];
-  char pid_path[PID_PATH_LENGHT];
-  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
-
-  int i = 1, j = 0; // i indica la riga (della finestra) dove stampare, j il processo
-
-  int max_y = getmaxy(window); 
-
-  while ((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1)){
-
-    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
-    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
-    memset(pid_path, 0, PID_PATH_LENGHT);
-
-    if (is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
-
-      strcpy(pid_cmdline, PROC_PATH);
-      strcat(pid_cmdline, "/");
-      strcat(pid_cmdline, proc_iter->d_name);
-      strcat(pid_cmdline, "/");
-
-      strcat(pid_path, pid_cmdline);
-
-      strcat(pid_cmdline, "cmdline");
-      strcat(pid_cmdline, "\0");
-
-      file_cmdline = fopen(pid_cmdline, "r");
-
-      if (file_cmdline == NULL){ // err file
-        fclose(file_cmdline);
-        continue;
-      }
-
-      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
-
-      fclose(file_cmdline);
-
-      if (strcmp(buffer_cmdline, "\0") == 0) continue; // cmdline vuoto, pid di un processo senza cmdline
-      strtok(buffer_cmdline, SEPARATOR2);
-      
-      if(j >= starting_index && regexec(&regex_var, buffer_cmdline,  0, NULL, 0) == 0){
-        //match con la regex
-        mvwprintw(window, i, 1, "%s %s %c", proc_iter->d_name, buffer_cmdline, '\0');
-        box(window, (int)'|', (int)'-');
-        wrefresh(window);
-        i++;
-      }
-
-      j++;
-
-    }
-  }
-
-  closedir(proc_dir);
-  return;
-}
-
 void find_process(WINDOW* window, int starting_index, char* string_to_compare){
-  if(regcomp(&regex_var, string_to_compare, 0) != 0) exit(EXIT_FAILURE);
-
+ 
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+  if(regcomp(&regex_var, string_to_compare, 0) != 0) return;
   
+  int max_y = getmaxy(window);
+
   dirent* proc_iter;
   FILE* file_cmdline;
 
@@ -782,11 +716,10 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
   char pid_path[PID_PATH_LENGHT];
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
-  int i = 1, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
-
-  //mvwprintw(window, 1, 1, "%s %c", "PID | cmdline", '\0');
-
-  int max_y = getmaxy(window); //??controlla, non aggiornato IRT
+  int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
+  mvwprintw(window, 1, 2, "| PID | cmdline | %c", '\0');
+  box(window, (int)'|', (int)'-');
+  wrefresh(window);
 
   while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
 
@@ -817,25 +750,89 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 
       fclose(file_cmdline);
       
-
       if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
+
       strtok(buffer_cmdline, SEPARATOR2);
-      
+
       if(j >= starting_index){
 
-        if(regexec(&regex_var, buffer_cmdline,  0, NULL, 0) == 0){
-          //match con la regex
-          mvwprintw(window, i, 1, "%s %s %c", proc_iter->d_name, buffer_cmdline, '\0');
-          box(window, (int)'|', (int)'-');
+        if(regexec(&regex_var, buffer_cmdline,  0, NULL, 0) == 0){//match con la regex (per nome)
+          
+          mvwprintw(window, i, 2, "%s %s %c", proc_iter->d_name, buffer_cmdline, '\0');
           wrefresh(window);
           i++;
         }
 
+        if (string_to_compare[0] != '\0' && regexec(&regex_var, proc_iter->d_name, 0, NULL, 0) == 0){ ////match con la regex (per PID)
+          // match con la regex
+          mvwprintw(window, i, 2, "%s %s %c", proc_iter->d_name, buffer_cmdline, '\0');
+          wrefresh(window);
+          i++;
+        }
+        
       }
       
       j++;
     }
   }
 
+  regfree(&regex_var);
   closedir(proc_dir);
+}
+
+int number_of_regex_matches(char* string_to_compare){ //versione separata
+
+  DIR* proc_dir;
+  if((proc_dir = opendir(PROC_PATH)) == NULL) return 0;
+  if(regcomp(&regex_var, string_to_compare, 0) != 0) return 0;
+
+  dirent* proc_iter;
+  FILE* file_cmdline;
+
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+
+  int count = 0;
+
+  while((proc_iter = readdir(proc_dir)) != NULL ){
+
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+
+    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
+
+      strcpy(pid_cmdline, PROC_PATH);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, "cmdline");
+      strcat(pid_cmdline, "\0");
+
+      file_cmdline = fopen(pid_cmdline, "r");
+
+      if(file_cmdline == NULL){//err file
+        fclose(file_cmdline);
+        continue;
+      }
+      
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
+
+      fclose(file_cmdline);
+      
+      if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
+      
+      if(regexec(&regex_var, buffer_cmdline,  0, NULL, 0) == 0){//match con la regex (per nome)
+        count++;
+      }
+
+      if (string_to_compare[0] != '\0' && regexec(&regex_var, proc_iter->d_name, 0, NULL, 0) == 0){ ////match con la regex (per PID)
+        count++;
+      }
+        
+    }
+  }
+
+  closedir(proc_dir);
+  if(count == 0) count = 1; //perché faccio / o % count, quindi è un errore di divisione per zero, da evitare, approssimato ad 1
+  return count;
 }

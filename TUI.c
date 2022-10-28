@@ -22,6 +22,7 @@ int has_colors_bool = 0;
 struct sigaction signal_handler_struct, signal_handler_struct_old;
 
 int starting_row = 2, starting_process = 0;
+int find_starting_process = 0; // NB:diverso da starting_process
 
 int max_y, max_x;
 
@@ -146,7 +147,7 @@ void TUI_default_interface(){
       if(starting_process > 0){
         starting_process--;
       }else{
-        starting_process = current_number_of_processes();
+        starting_process = current_number_of_processes()-1;
       }
 
       if(starting_row > 0){
@@ -376,47 +377,52 @@ void TUI_find_interface(){
 
   current_if = FIND_IF;
 
-  //NOTA: devo disabilitare b, perché potrebbe essere conenuto nel nome del processo, ora quando premo b in ogni momento torna indietro
-
   wclear(window1);
   box(window1, (int) '|', (int) '-');
-  mvwprintw(window1, 1, 2, "%s %c", "INVIO per terminare la digitazione...", '\0');
+  mvwprintw(window1, 1, 2, "%s %c", "premi INVIO per terminare la ricerca...", '\0');
   wrefresh(window1);
 
   wclear(window3);
-  //wrefresh(window3);//applicare il clear prima di spostarla, altrimenti rimangono dei caratteri sotto
-  wresize(window3, max_y-6, max_x);//IMPORTANTE: ho perso 1 ora a capire il problema, dal man se il mvwin sfora le dimensioni di stdscr (es scorri in basso come questo caso) NON viene applicato, quindi se scorri in basso PRIMA devi ridimensionare delle dimensioni che scorri la finestra!
-  //credits. mvwin Calling mvwin moves the window so that the upper left-hand corner is at position (x, y).  If the move would cause the window to be off the screen, it is an error and the window is not moved.  Moving subwindows is allowed, but should be avoided.
+  
+  wresize(window3, max_y-6, max_x);
   mvwin(window3, 6, 0);
   box(window3, (int) '|', (int) '-');
   wrefresh(window3);
 
-  //print_proc(window3, 0, 0);
-
+  wclear(window4);
   box(window4, (int) '|', (int) '-');
-  mvwprintw(window4, 1, 2, "Processo: (Digita il nome del processo da cercare, invio per confermare)");
+  mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per terminare la ricerca)");
   wrefresh(window4);
 
   int j = 0;
   memset(window_input,0,WINDOW_INPUT_LENGHT);
 
   find_process(window3, starting_process, window_input);
+  char get_input;
 
-  while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
+  while((get_input = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
-    if((window_input[j] == (char) KEY_BACKSPACE || window_input[j] == (char) 127 || window_input[j] == (char) 8 || window_input[j] == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
+    if((get_input == (char) KEY_BACKSPACE || get_input == (char) 127 || get_input == (char) 8 || get_input == (char) '\b')){//l'utente puo' cancellare il testo credits https://stackoverflow.com/questions/44943249/detecting-key-backspace-in-ncurses
+      
+      find_starting_process = 0;
+
       if(j == 0){
-        window_input[j] = '\0'; // evita caratteri sporchi
+        window_input[0] = '\0'; // evita caratteri sporchi
         continue;
       }
 
       window_input[j] = '\0'; //evita caratteri sporchi
       window_input[j-1] = '\0';//cancella il carattere precedente
-
       wclear(window4);
-      box(window4, (int) '|', (int) '-');
-      mvwprintw(window4, 1, 2, "Processo: ");
-      mvwprintw(window4, 1, 15, "%s", window_input);
+      box(window4, (int)'|', (int)'-');
+
+      if(j == 1){
+        mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per confermare)");
+      }else{
+        mvwprintw(window4, 1, 2, "Ricerca: ");
+        mvwprintw(window4, 1, 12, "%s", window_input);
+      }
+
       wrefresh(window4);
       j--;
 
@@ -427,80 +433,61 @@ void TUI_find_interface(){
       continue;
     }
 
-    if (window_input[j] == (char) KEY_UP){ //cast a char importante
+    if (get_input == (char) KEY_UP){
 
-      window_input[j] = '\0';
+      //window_input[j] = '\0';
 
-      if(starting_process > 0){
-        starting_process--;
+      if(find_starting_process > 0){
+        find_starting_process--; 
       }else{
-        starting_process = current_number_of_processes();
-      }
-
-      if(starting_row > 0){
-        starting_row--;
-      }else{
-        starting_row = max_y;
+        find_starting_process = number_of_regex_matches(window_input)-1;
       }
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
-      // find_process(window3, -1, window_input);
-      find_process(window3, starting_process, window_input);
+      find_process(window3, find_starting_process, window_input);
+
+      //mvwprintw(window3, 10, 1, "%d %c", find_starting_process, '\0');
+      //wrefresh(window3);
       continue;
 
-    }else if(window_input[j] == (char) KEY_DOWN){ //cast a char importante
-      window_input[j] = '\0';
-      starting_process = (starting_process+1)%current_number_of_processes();
-      starting_row = (starting_row+1)%max_y;
+    }else if(get_input == (char) KEY_DOWN){ //cast a char importante
+      //window_input[j] = '\0';
+
+      find_starting_process = (find_starting_process + 1) % number_of_regex_matches(window_input);
 
       wclear(window3);
       wrefresh(window3);
       box(window3, (int) '|', (int) '-');
 
-      // find_process(window3, -1, window_input);
-      find_process(window3, starting_process, window_input);
+      find_process(window3, find_starting_process, window_input);
 
       continue;
-    }else if(!( (window_input[j] >= '0' && window_input[j] <= '9') ||( (window_input[j] >= 'A' && window_input[j] <= 'Z') ) ||  (window_input[j] >= 'a' && window_input[j] <= 'z') ) ){
+    }else if(!( (get_input >= '0' && get_input <= '9') ||( (get_input >= 'A' && get_input <= 'Z') ) ||  (get_input >= 'a' && get_input <= 'z') ) ){
       continue; //non è alpha-numerico
-    } 
+    }
 
-    //if(window_input[j] < '0' || window_input[j] > '9') continue; //controllo PID, e' SOLO numerico
-    
+    //prima non viene salvato in window_input
+    window_input[j] = get_input;
+
+    find_starting_process = 0;
+
     wclear(window3);
     wrefresh(window3);
-    //find_process(window3, -1, window_input);
-    find_process(window3, starting_process, window_input);
+    find_process(window3, find_starting_process, window_input);
 
     wclear(window4);
     box(window4, (int) '|', (int) '-');
     wrefresh(window4);
-    mvwprintw(window4, 1, 2, "Processo: ");
-    mvwprintw(window4, 1, 15, "%s %c", window_input, '\0');
+    mvwprintw(window4, 1, 2, "Ricerca: ");
+    mvwprintw(window4, 1, 12, "%s %c", window_input, '\0');
     wrefresh(window4);
     j++;
   }
 
-  window_input[j] = '\0';
-  wclear(window1);
-  box(window1, (int)'|', (int)'-');
-  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
-  wrefresh(window1);
-  wclear(window4);
-  wrefresh(window4);
+  memset(window_input, 0, WINDOW_INPUT_LENGHT);//leak dati?
 
-  wclear(window3);
-  wresize(window3, max_y - 3, max_x);
-  mvwin(window3, 3, 0);
-  box(window3, (int)'|', (int)'-');
-  wrefresh(window3);
-  find_process(window3, starting_process, window_input);
-
-  while(!( window_input[0] == 'b'|| window_input[0] == 'B')){
-    window_input[0] = getch();
-  }
   return;
 }
 
@@ -577,32 +564,6 @@ void TUI_kill_sleep_resume_interface(){
 
   while((window_input[j] = (char) getch()) != '\n' && j < WINDOW_INPUT_LENGHT){
 
-    /*if(is_term_resized(max_y, max_x)){
-      resize_term_custom(window1, window2, window3, window4, max_y, max_x, current_if);
-
-      if(j == 0){
-
-        if(current_if == KILL_IF){
-          mvwprintw(window4, 1, 2, "PID: (Digita il PID da uccidere, invio per confermare)");
-        }else if(current_if == SLEEP_IF){
-          mvwprintw(window4, 1, 2, "PID: (Digita il PID da addormentare, invio per confermare)");
-        }else{
-          mvwprintw(window4, 1, 2, "PID: (Digita il PID da risvegliare, invio per confermare)");
-        }
-
-      }else{
-        window_input[j] = '\0'; //evita caratteri sporchi
-        mvwprintw(window4, 1, 2, "PID: ");
-        mvwprintw(window4, 1, 7, "%s", window_input);
-      }
-      wrefresh(window4);
-
-      print_proc(window3, starting_process, starting_row);
-
-      getmaxyx(stdscr, max_y, max_x);
-      continue;
-    }*/
-
     if(window_input[j] == 'b' || window_input[j] == 'B'){//l'utente puo' premere b in ogni momento e annulla l'inserimento del pid
       window_input[0] = 'b';
       break;
@@ -628,7 +589,7 @@ void TUI_kill_sleep_resume_interface(){
       if(starting_process > 0){
         starting_process--;
       }else{
-        starting_process = current_number_of_processes();
+        starting_process = current_number_of_processes() -1 ;
       }
 
       if(starting_row > 0){
@@ -670,7 +631,7 @@ void TUI_kill_sleep_resume_interface(){
   if(!(window_input[0] == '\n' || window_input[0] == 'b' || window_input[0] == 'B')){
     if(current_if == KILL_IF){
 
-      if(kill_PID(atoi(window_input)) == -1){//err
+      if(kill_PID(atoi(window_input)) < 0){//err
         mvwprintw(window4, 1, j+8, "non ucciso");
       }else{
         mvwprintw(window4, 1, j+8, "ucciso");
@@ -678,7 +639,7 @@ void TUI_kill_sleep_resume_interface(){
 
     }else if(current_if == SLEEP_IF){
 
-      if(sleep_PID(atoi(window_input)) == -1){//err
+      if(sleep_PID(atoi(window_input)) < 0){//err
         mvwprintw(window4, 1, j+8, "non addormentato");
       }else{
         mvwprintw(window4, 1, j+8, "addormentato");
@@ -686,7 +647,7 @@ void TUI_kill_sleep_resume_interface(){
       
     }else{
 
-      if(resume_PID(atoi(window_input)) == -1){//err
+      if(resume_PID(atoi(window_input)) < 0){//err
         mvwprintw(window4, 1, j+8, "non risvegliato");
       }else{
         mvwprintw(window4, 1, j+8, "risvegliato");
@@ -703,6 +664,7 @@ void TUI_kill_sleep_resume_interface(){
     window_input[0] = getch();
   }
 
+  memset(window_input, 0, WINDOW_INPUT_LENGHT); // leak dati?
   return;
 
 }
@@ -745,6 +707,20 @@ void resize_term_custom(){
   //https://linux.die.net/man/3/wresize (>= 0)
   //da sistemare, caso verametne degenere
 
+  if(max_y <= 6 || max_x <= 0){ //per ora semplicemente chiudo il programma e dealloco le risorse deallocabili...
+    keypad(stdscr, false);
+
+    endwin(); // ncurses, dealloca le finestre
+    clear();
+
+    sem_destroy(&sem1);
+    cpu_usage_free(cpu_usage_var);
+
+    cpu_snapshot_free(cpu_snapshot_t0);
+    cpu_snapshot_free(cpu_snapshot_t1);
+    exit(EXIT_FAILURE);
+  } 
+
   if(current_if == DEFAULT_IF){
 
     wresize(window1, WINDOW1_Y, max_x);
@@ -759,6 +735,7 @@ void resize_term_custom(){
     print_proc(window3, starting_process, starting_row);
 
   }else if(current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF ){
+    
     wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int) '|', (int) '-');
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
@@ -785,7 +762,7 @@ void resize_term_custom(){
       }
 
     }else{
-      //window_input[strlen(window_input) - 1] = '\0'; // evita caratteri sporchi, controlla bene 
+      window_input[strlen(window_input) - 1] = '\0'; // evita caratteri sporchi, controlla bene 
       mvwprintw(window4, 1, 2, "PID: ");
       mvwprintw(window4, 1, 7, "%s", window_input);
     }
@@ -828,6 +805,30 @@ void resize_term_custom(){
 
     print_stats(window3, starting_process, starting_row);
 
+  }else if(current_if == FIND_IF){
+
+    //if(strlen(window_input) > 0) window_input[strlen(window_input) - 1] = '\0'; // rimuovo il KEY_RESIZE salvato in windows_input
+
+    box(window1, (int)'|', (int)'-');
+    mvwprintw(window1, 1, 2, "%s %c", "premi INVIO per terminare la ricerca...", '\0');
+    wrefresh(window1);
+
+    wresize(window3, max_y - 6, max_x);
+    mvwin(window3, 6, 0);
+    box(window3, (int)'|', (int)'-');
+    find_process(window3, starting_process, window_input);
+    //mvwprintw(window3, 1, 2, "%s %c", window_input, '\0');
+    wrefresh(window3);
+
+    wclear(window4);
+    box(window4, (int)'|', (int)'-');
+    if(window_input[0] != '\0'){
+      mvwprintw(window4, 1, 2, "Ricerca:  %s %c", window_input, '\0');
+    }else{
+      mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per terminare la ricerca)");
+    }
+    wrefresh(window4);
+
   }//etc...
 
   //refresh();
@@ -835,7 +836,7 @@ void resize_term_custom(){
 
 void refresh_UI(){
 
-  if(current_if == HELP_IF || current_if == EASTEREGG_IF || current_if == FIND_IF ) return;
+  if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
   //devo differenziare tra le le UI chiamanti
   
   wclear(window3);
@@ -848,8 +849,31 @@ void refresh_UI(){
     print_proc_advanced(window3, starting_process, starting_row);
   }else if(current_if == DEFAULT_IF || current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF){
     print_proc(window3, starting_process, starting_row);
-  }else {
-    //print_proc(window3, starting_process, starting_row);
+  }else if(current_if == FIND_IF){
+    //if(strlen(window_input) > 0) window_input[strlen(window_input)] = '\0'; // rimuovo il KEY_RESIZE salvato in windows_input
+
+    box(window1, (int)'|', (int)'-');
+    mvwprintw(window1, 1, 2, "%s %c", "premi INVIO per terminare la ricerca...", '\0');
+    wrefresh(window1);
+
+    wresize(window3, max_y - 6, max_x);
+    mvwin(window3, 6, 0);
+    box(window3, (int)'|', (int)'-');
+    find_process(window3, find_starting_process, window_input);
+    //mvwprintw(window3, 1, 2, "%s %c", window_input, '\0');
+    wrefresh(window3);
+
+    wclear(window4);
+    box(window4, (int)'|', (int)'-');
+    if(window_input[0] != '\0'){
+      mvwprintw(window4, 1, 2, "Ricerca:  %s %c", window_input, '\0');
+    }else{
+      mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per terminare la ricerca)");
+    }
+    wrefresh(window4);
+
+  }else{
+
   }
 
   return;
@@ -909,3 +933,4 @@ void print_easteregg(int i){
   fclose(file);
 
 }
+

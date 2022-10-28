@@ -135,6 +135,7 @@ void cpu_snapshot_free(cpu_snapshot_t* free);
 void mem_usage();
 
 void find_process(WINDOW* window, int starting_index, char* string_to_compare);
+int number_of_regex_matches(char *string_to_compare);
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C
