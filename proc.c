@@ -5,7 +5,7 @@ long number_of_processors = -1;
 long page_size = -1 ;// = sysconf(_SC_PAGESIZE);//https://man7.org/linux/man-pages/man2/getpagesize.2.html
 //Portable applications should employ sysconf(_Ssysinfo(system_information);sysinfo(system_information);C_PAGESIZE) instead of getpagesize():
 
-regex_t regex_var;
+//regex_t regex_var;
 
 void print_proc(WINDOW* window, int starting_index, int starting_row){
   cumulative_print_proc(window, starting_index, starting_row, PRINT_PROC);
@@ -702,7 +702,8 @@ void mem_usage(WINDOW *window, int starting_row, int starting_col){
 }
 
 void find_process(WINDOW* window, int starting_index, char* string_to_compare){
- 
+  regex_t regex_var;
+
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
   if(regcomp(&regex_var, string_to_compare, 0) != 0) return;
@@ -712,9 +713,8 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
   dirent* proc_iter;
   FILE* file_cmdline;
 
-  char pid_cmdline[PID_CMDLINE_LENGHT];
-  char pid_path[PID_PATH_LENGHT];
-  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+  char pid_cmdline[PID_CMDLINE_LENGHT2];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT2];
 
   int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
   mvwprintw(window, 1, 2, "| PID | cmdline | %c", '\0');
@@ -723,9 +723,8 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 
   while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
 
-    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
-    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
-    memset(pid_path, 0, PID_PATH_LENGHT);
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT2);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT2);
 
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
@@ -733,26 +732,17 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
       strcat(pid_cmdline, "/");
       strcat(pid_cmdline, proc_iter->d_name);
       strcat(pid_cmdline, "/");
-
-      strcat(pid_path, pid_cmdline);
-
       strcat(pid_cmdline, "cmdline");
       strcat(pid_cmdline, "\0");
 
       file_cmdline = fopen(pid_cmdline, "r");
 
-      if(file_cmdline == NULL){//err file
-        fclose(file_cmdline);
-        continue;
-      }
-      
-      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
+      if(file_cmdline == NULL) continue;
 
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT2, file_cmdline);
       fclose(file_cmdline);
       
       if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
-
-      strtok(buffer_cmdline, SEPARATOR2);
 
       if(j >= starting_index){
 
@@ -781,7 +771,7 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 }
 
 int number_of_regex_matches(char* string_to_compare){ //versione separata
-
+  regex_t regex_var;
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return 0;
   if(regcomp(&regex_var, string_to_compare, 0) != 0) return 0;
@@ -789,15 +779,15 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
   dirent* proc_iter;
   FILE* file_cmdline;
 
-  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char pid_cmdline[PID_CMDLINE_LENGHT2];
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
   int count = 0;
 
   while((proc_iter = readdir(proc_dir)) != NULL ){
 
-    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
-    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT2);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT2);
 
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
@@ -810,13 +800,9 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
 
       file_cmdline = fopen(pid_cmdline, "r");
 
-      if(file_cmdline == NULL){//err file
-        fclose(file_cmdline);
-        continue;
-      }
-      
-      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
-
+      if(file_cmdline == NULL)continue;
+  
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT2, file_cmdline);
       fclose(file_cmdline);
       
       if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline

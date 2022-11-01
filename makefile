@@ -4,7 +4,8 @@ HEADER	= bot.h proc.h TUI.h process_monitor.h
 OUT	= bot
 CC	 = gcc
 FLAGS	 = -g -c -Wall
-LFLAGS = -lncurses -lpthread #https://stackoverflow.com/questions/16192087/undefined-reference-to-initscr-ncurses
+LFLAGS = -lpthread -lncurses #--disable-leaks
+#https://stackoverflow.com/questions/16192087/undefined-reference-to-initscr-ncurses
 
 all: $(OBJS)
 	$(CC) -g $(OBJS) -o $(OUT) $(LFLAGS)

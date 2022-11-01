@@ -417,7 +417,7 @@ void TUI_find_interface(){
       box(window4, (int)'|', (int)'-');
 
       if(j == 1){
-        mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per confermare)");
+        mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per terminare la ricerca)");
       }else{
         mvwprintw(window4, 1, 2, "Ricerca: ");
         mvwprintw(window4, 1, 12, "%s", window_input);
@@ -428,7 +428,6 @@ void TUI_find_interface(){
 
       wclear(window3);
       wrefresh(window3);
-      // find_process(window3, -1, window_input);
       find_process(window3, starting_process, window_input);
       continue;
     }

@@ -28,6 +28,7 @@
 #define PROC_PATH_STRLEN 5
 #define PROC_UPTIME_PATH "/proc/uptime"
 #define BUFFER_CMDLINE_LENGHT 128
+#define BUFFER_CMDLINE_LENGHT2 32
 #define SEPARATOR1 " \t\n"
 #define SEPARATOR2 " \t\n:"
 #define MAX_TOKEN1 25
@@ -44,6 +45,7 @@
 
 #define PID_PATH_LENGHT 64
 #define PID_CMDLINE_LENGHT 128
+#define PID_CMDLINE_LENGHT2 64
 #define PID_STAT_LENGHT 128
 #define PID_STATM_LENGHT 128
 
