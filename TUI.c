@@ -256,7 +256,7 @@ void TUI_list_interface(){
       if(starting_process > 0){
         starting_process--;
       }else{
-        starting_process = current_number_of_processes();
+        starting_process = current_number_of_processes()-1;
       }
 
       if(starting_row > 0){

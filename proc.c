@@ -213,8 +213,8 @@ char* print_PID_stats(char* path){
     //cpu_percentage_used_time_sec = 0;
   //}
 
-  sprintf(ret, "%s %c %ld %0.2f %0.2f %0.2f %0.2f%% %0.2f%% %lld %ld %c", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, used_physical_memory_percentage, used_physical_memory, vm_size, '\0');
-
+  //imposto gli spazi
+  sprintf(ret, "%-20s  %1c  %2ld  %8.2f  %8.2f  %8.2f  %6.2f%%  %6.2f%%  %-8lld  %-8ld%c", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, used_physical_memory_percentage, used_physical_memory, vm_size, '\0');
   return ret;
 }
 
@@ -323,7 +323,6 @@ int is_pid(char* name){
 }
 
 void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row, int calling_function){
-  //ottimizzazione funzione, viene terminata prima e allocata sullo stack... TBF
   //conto come processi "effettivi" solo quelli con cmdline presente
   
   DIR* proc_dir;
@@ -339,13 +338,17 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
 
   int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
 
-  int max_y = getmaxy(window); //??controlla, non aggiornato IRT
+  int max_y = getmaxy(window);
 
   if(calling_function == PRINT_PROC){
-    mvwprintw(window, 1, 2, "%s %c", "| PID | pid_path | cmdline |", '\0'); //https://stackoverflow.com/questions/23924497/how-to-fix-gcc-wall-embedded-0-in-format-warning
+    mvwprintw(window, 1, 2, "%s %c", "| PID | pid_path | cmdline |", '\0'); 
+    //https://stackoverflow.com/questions/23924497/how-to-fix-gcc-wall-embedded-0-in-format-warning
+    //https://pubs.opengroup.org/onlinepubs/009695399/functions/fprintf.html
   }else{
-
-    mvwprintw(window, 1, 2, "%s %c", "PID CMD S PR TT-s UT-s SU-s %CPU %MEM RES-KB VIRT-KB", '\0');
+    //%-20s  %1c  %2ld  %6.2f  %6.2f  %6.2f  %6.2f%%  %3.2f%%  %-8lld  %-8ld%c
+    //"PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES-KB", "VIRT-KB", '\0');
+    //CPU% +1 perché c'è %
+    mvwprintw(window, 1, 2, "%-6s  %-20s  %-1s  %-2s  %8s  %8s  %8s  %7s  %7s  %-8s  %-8s%c", "PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES-KB", "VIRT-KB", '\0');
   }
 
   while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
@@ -388,8 +391,15 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
         }else{
           
           ret_pid_stats = print_PID_stats(pid_path);
-          mvwprintw(window, i, 2, "%s %s %c", proc_iter->d_name, ret_pid_stats, '\0');
-          wrefresh(window);
+          if(strlen(proc_iter->d_name) < 7){
+            //https://stackoverflow.com/questions/23776824/what-is-the-meaning-of-s-in-a-printf-format-string
+            mvwprintw(window, i, 2, "%-6s  %s %c", proc_iter->d_name, ret_pid_stats, '\0');
+          }else{
+            //PID troppo lungo, creo deallineamento del print, ma riesco a vedere il pid per intero senza tagliarlo
+            mvwprintw(window, i, 2, "%s  %s %c", proc_iter->d_name, ret_pid_stats, '\0');
+          }
+          
+          //wrefresh(window);
           free(ret_pid_stats);
           
         }
@@ -702,10 +712,12 @@ void mem_usage(WINDOW *window, int starting_row, int starting_col){
 }
 
 void find_process(WINDOW* window, int starting_index, char* string_to_compare){
-  regex_t regex_var;
-
+  if(string_to_compare == NULL)return;
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+
+  regex_t regex_var;
+  memset(&regex_var, 0, sizeof(regex_t));
   if(regcomp(&regex_var, string_to_compare, 0) != 0) return;
   
   int max_y = getmaxy(window);
@@ -713,8 +725,8 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
   dirent* proc_iter;
   FILE* file_cmdline;
 
-  char pid_cmdline[PID_CMDLINE_LENGHT2];
-  char buffer_cmdline[BUFFER_CMDLINE_LENGHT2];
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
   int i = 3, j = 0;//i indica la riga (della finestra) dove stampare, j il processo da stampare
   mvwprintw(window, 1, 2, "| PID | cmdline | %c", '\0');
@@ -723,8 +735,8 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 
   while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
 
-    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT2);
-    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT2);
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
 
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
@@ -739,7 +751,7 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 
       if(file_cmdline == NULL) continue;
 
-      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT2, file_cmdline);
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
       fclose(file_cmdline);
       
       if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
@@ -771,7 +783,10 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 }
 
 int number_of_regex_matches(char* string_to_compare){ //versione separata
+
   regex_t regex_var;
+  memset(&regex_var, 0, sizeof(regex_t));
+
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return 0;
   if(regcomp(&regex_var, string_to_compare, 0) != 0) return 0;
@@ -779,15 +794,15 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
   dirent* proc_iter;
   FILE* file_cmdline;
 
-  char pid_cmdline[PID_CMDLINE_LENGHT2];
+  char pid_cmdline[PID_CMDLINE_LENGHT];
   char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
 
   int count = 0;
 
   while((proc_iter = readdir(proc_dir)) != NULL ){
 
-    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT2);
-    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT2);
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
 
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
@@ -802,7 +817,7 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
 
       if(file_cmdline == NULL)continue;
   
-      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT2, file_cmdline);
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
       fclose(file_cmdline);
       
       if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
