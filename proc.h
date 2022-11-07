@@ -81,12 +81,27 @@
 //altro
 #define KB_TO_GB 1000000
 
+//        1.000 KB
+//    1.000.000 MB
+//1.000.000.000 GB
+//2.147.483.647 INT_MAX
+
+//#define B_SIZE 1
+#define KB_SIZE 1000
+#define MB_SIZE 1000 * KB_SIZE
+#define GB_SIZE 1000 * MB_SIZE
+//#define TB_SIZE 1000 * GB_SIZE
+
 //REGEX PATTERN
 
 #define PATTERN_REGEX1 "[:word:]"
 #define PATTERN_REGEX2 "^[a-zA-Z0-9_]*$"
 //https://en.wikibooks.org/wiki/Regular_Expressions/POSIX_Basic_Regular_Expressions
 //https://stackoverflow.com/questions/336210/regular-expression-for-alphanumeric-and-underscores
+
+#define ORDERBY_PID 0
+#define ORDERBY_CMDLINE 1
+//etc
 
 //struct
 
@@ -113,6 +128,25 @@ typedef struct cpu_usage_t{
     double* cpu_percentage;
 }cpu_usage_t;
 
+typedef struct pid_order_t{
+
+    #define INCREASE_FACTOR 2
+    #define DECREASE_FACTOR 3
+
+    int ordering_method;// = ORDERBY_PID;
+    int num_proc;
+    int max_size;
+
+    int* PID; //pid_order_t->pid[0] ...
+
+    //array di stringhe, dimensioni fixed CMD_LINE_LENGHT per ciascuna stringa
+    // { [....][....]...[....] }*NUM_PROC
+    char** cmdline;
+    //etc
+}pid_order_t;
+
+//
+
 void print_proc(WINDOW* window, int starting_index, int starting_row);
 void print_proc_advanced(WINDOW* window, int starting_index, int starting_row);
 void print_stats(WINDOW *window, int starting_index, int starting_row);
@@ -138,6 +172,14 @@ void mem_usage();
 
 void find_process(WINDOW* window, int starting_index, char* string_to_compare);
 int number_of_regex_matches(char *string_to_compare);
+
+//
+void* pid_order_alloc();
+void pid_order(pid_order_t *ret, int orderby);
+void pid_order_print();
+void pid_order_free(pid_order_t* ret);
+void pid_order_resize(pid_order_t *ret, int new_number_of_processes);
+void get_info_of_processes(pid_order_t *ret);
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C

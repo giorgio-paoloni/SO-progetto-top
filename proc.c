@@ -153,10 +153,10 @@ char* print_PID_stats(char* path){
     }else if(i == 22){//starttime  %llu : tempo di avvio del processo a partire dal boot
       start_time_clock = strtoull(token, NULL, 10);
     }else if(i == 23){//vsize  %lu
-      vm_size = strtoul(token, NULL, 10) / 1000 ; //e' segnato in bytes, converto in KB
+      vm_size = strtoul(token, NULL, 10);// / 1000 ; //e' segnato in bytes, converto in KB
     }else if(i == 24){//(24) rss  %ld 
       rss = strtol(token, NULL, 10);
-      used_physical_memory = rss * page_size; //KB RES 
+      used_physical_memory = rss * page_size; //è in BYTES (ex//KB RES )
     }
 
     token = strtok(NULL, SEPARATOR1);
@@ -213,8 +213,34 @@ char* print_PID_stats(char* path){
     //cpu_percentage_used_time_sec = 0;
   //}
 
+  //credits. https://stackoverflow.com/questions/2674312/how-to-append-strings-using-sprintf
   //imposto gli spazi
-  sprintf(ret, "%-20s  %1c  %2ld  %8.2f  %8.2f  %8.2f  %6.2f%%  %6.2f%%  %-8lld  %-8ld%c", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, used_physical_memory_percentage, used_physical_memory, vm_size, '\0');
+
+  int length = 0;
+
+  length += snprintf(ret + length, RET_LENGHT - length, "%-20s  %1c  %2ld  %8.2f  %8.2f  %8.2f  %6.2f%%  %6.2f%% ", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, used_physical_memory_percentage);
+
+  if (used_physical_memory < KB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6lldB", used_physical_memory);
+  }else if (used_physical_memory >= KB_SIZE && used_physical_memory < MB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2lfK", ((double)used_physical_memory )/ ((double)KB_SIZE));
+  }else if (used_physical_memory >= MB_SIZE && used_physical_memory < GB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2lfM", ((double)used_physical_memory )/ ((double)MB_SIZE));
+  }else if(used_physical_memory >= GB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2lfG", ((double)used_physical_memory) / ((double)GB_SIZE));
+  }
+
+  if (vm_size < KB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6ldB%c", vm_size, '\0');
+  }else if (vm_size >= KB_SIZE && vm_size < MB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2fK%c", ((double) vm_size )/ ((double)KB_SIZE) , '\0');
+  }else if (vm_size >= MB_SIZE && vm_size < GB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2fM%c", ((double)vm_size) / ((double)MB_SIZE), '\0');
+  }else if(vm_size >= GB_SIZE){
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2fG%c",((double)vm_size) / ((double)GB_SIZE), '\0');
+  }
+
+  
   return ret;
 }
 
@@ -348,7 +374,8 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
     //%-20s  %1c  %2ld  %6.2f  %6.2f  %6.2f  %6.2f%%  %3.2f%%  %-8lld  %-8ld%c
     //"PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES-KB", "VIRT-KB", '\0');
     //CPU% +1 perché c'è %
-    mvwprintw(window, 1, 2, "%-6s  %-20s  %-1s  %-2s  %8s  %8s  %8s  %7s  %7s  %-8s  %-8s%c", "PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES-KB", "VIRT-KB", '\0');
+    //CPU% +1 perché c'è K/M/G
+    mvwprintw(window, 1, 2, "%-6s  %-20s  %-1s  %-2s  %8s  %8s  %8s  %7s  %7s   %7s  %7s%c", "PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES", "VIRT", '\0');
   }
 
   while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
@@ -836,4 +863,119 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
   closedir(proc_dir);
   if(count == 0) count = 1; //perché faccio / o % count, quindi è un errore di divisione per zero, da evitare, approssimato ad 1
   return count;
+}
+
+
+void* pid_order_alloc(){
+  //primo nodo (-1)
+  pid_order_t* ret = (pid_order_t *)malloc(sizeof(pid_order_t));
+  ret->ordering_method = ORDERBY_PID;
+  ret->num_proc = -1;
+  ret->PID = NULL;
+  ret->cmdline = NULL;
+  //...
+
+  pid_order(ret, ORDERBY_PID);
+  return (void*) ret;
+}
+
+void pid_order_print(){
+  return;
+}
+
+void pid_order_free(pid_order_t* ret){
+  return;
+}
+
+void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
+
+  int new_max_size;
+
+  if(ret->max_size < new_number_of_processes){
+    new_max_size = INCREASE_FACTOR * new_number_of_processes;
+  }else{
+    new_max_size = DECREASE_FACTOR * new_number_of_processes;
+  }
+
+  ret->max_size = new_max_size;
+  ret->num_proc = 0;
+
+  ret->PID = realloc(ret->PID, new_max_size * sizeof(int));
+  ret->cmdline = realloc(ret->cmdline, new_max_size * CMD_LINE_LENGHT * sizeof(char)); // allocato contiguamente?
+
+  return;
+}
+
+void pid_order(pid_order_t *ret, int orderby){
+  
+  ret->ordering_method = orderby;
+  int cnp = current_number_of_processes();
+  ret->num_proc = cnp;
+
+  //resize se troppo piccolo o troppo grande...
+  if(ret->max_size <= cnp) pid_order_resize(ret, cnp);
+  //if(ret->max_size >= cnp*4 ) pid_order_resize(ret, cnp);
+
+  get_info_of_processes(ret);
+
+  if(orderby == ORDERBY_PID){
+    return;
+  }else if(orderby == ORDERBY_CMDLINE){
+    return;
+  }
+  
+  return;
+}
+
+void get_info_of_processes(pid_order_t *ret){
+
+  if(ret == NULL) return;
+  
+  DIR* proc_dir;
+  if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+
+  int i = 0;
+
+  dirent* proc_iter;
+  FILE* file_cmdline;
+
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT]; 
+
+  while( i < ret->num_proc && (proc_iter = readdir(proc_dir)) != NULL){
+
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+
+    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
+
+      strcpy(pid_cmdline, PROC_PATH);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, "cmdline");
+      strcat(pid_cmdline, "\0");
+
+      file_cmdline = fopen(pid_cmdline, "r");
+
+      if(file_cmdline == NULL){
+        //memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+        continue;
+      }
+
+      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
+
+      fclose(file_cmdline);
+
+      if(strcmp(buffer_cmdline,"\0") == 0) continue;
+
+      ret->PID[i] = atoi(proc_iter->d_name);
+      if (strcpy(ret->cmdline[i * CMD_LINE_LENGHT], buffer_cmdline) == NULL) return;
+
+      i++;
+    }
+  }
+
+  closedir(proc_dir);
+  return;
 }

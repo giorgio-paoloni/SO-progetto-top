@@ -24,6 +24,7 @@ struct sigaction signal_handler_struct, signal_handler_struct_old;
 int starting_row = 2, starting_process = 0;
 int find_starting_process = 0; // NB:diverso da starting_process
 
+
 int max_y, max_x;
 
 int current_if =  DEFAULT_IF;
@@ -130,17 +131,17 @@ void TUI_default_interface(){
     }else if(char_input == (int) 'z' || char_input == (int) 'Z'){
       TUI_sleep_interface();
       reset_to_default_interface();
-
     }else if(char_input == (int) 'r' || char_input == (int) 'R'){
       TUI_resume_interface();
       reset_to_default_interface();
-
-    }else if(char_input == (int) 'e' || char_input == (int) 'E'){//easter-egg, vorrei implementare un qualcosa alla sl https://github.com/mtoyoda/sl
-      //TBD
+    }else if(char_input == (int) 'e' || char_input == (int) 'E'){
       TUI_easteregg_inferface();
       reset_to_default_interface();
     }else if(char_input == (int) 'f' || char_input == (int) 'F'){
       TUI_find_interface();
+      reset_to_default_interface();
+    }else if(char_input == (int) 'o' || char_input == (int) 'O'){
+      TUI_orderby_interface();
       reset_to_default_interface();
     }else if (char_input == KEY_UP){
 
@@ -666,6 +667,134 @@ void TUI_kill_sleep_resume_interface(){
   memset(window_input, 0, WINDOW_INPUT_LENGHT); // leak dati?
   return;
 
+}
+
+void TUI_orderby_interface(){
+
+  //sintassi:
+  //C/D: crescente-decrescente
+  //9/1/2/3/4: PID/cmdline/...
+
+  current_if = ORDERBY_IF;
+
+  wclear(window1);
+  box(window1, (int)'|', (int)'-');
+  mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+  wrefresh(window1);
+
+  wclear(window3);
+  wrefresh(window3);                  
+  wresize(window3, max_y - 6, max_x); 
+  mvwin(window3, 6, 0);
+  box(window3, (int)'|', (int)'-');
+  wrefresh(window3);
+
+  box(window4, (int)'|', (int)'-');
+  mvwprintw(window4, 1, 2, "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)");
+  wrefresh(window4);
+
+  print_proc(window3, starting_process, starting_row);
+
+  memset(window_input, 0, WINDOW_INPUT_LENGHT);
+
+  int j = 0;// j = indica le celle occupate dell'array window_input
+  char get_input = 'a';
+  // WINDOW_INPUT_LENGHT2 ridotto a 3 caratteri
+  while ( j < WINDOW_INPUT_LENGHT2){
+    get_input = getch();
+    if (get_input == 'b' || get_input == 'B'){
+      //window_input[0] = 'b';
+      break;
+    }
+
+    if (get_input == (char)KEY_BACKSPACE || get_input == (char)127 ||get_input == (char)8 || get_input == (char)'\b'){
+
+      wclear(window4);
+      box(window4, (int)'|', (int)'-');
+
+      if(j == 0){
+        window_input[0] = '\0'; // evita caratteri sporchi
+        continue;
+      }
+
+      window_input[j] = '\0'; //evita caratteri sporchi
+      window_input[j-1] = '\0';//cancella il carattere precedente
+
+      if(j == 1){
+        mvwprintw(window4, 1, 2, "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)");
+        //mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per terminare la ricerca)");
+      }else{
+        mvwprintw(window4, 1, 2, "Ordina per: %s", window_input);
+      }
+
+      wrefresh(window4);
+      j--;
+      continue;
+    }
+
+    if (get_input == (char)KEY_UP){
+      //DISABILITATO TEMPORANEAMENTE
+      continue;
+
+      if (starting_process > 0){
+        starting_process--;
+      }else{
+        starting_process = current_number_of_processes() - 1;
+      }
+
+      if (starting_row > 0){
+        starting_row--;
+      }else{
+        starting_row = max_y;
+      }
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int)'|', (int)'-');
+      print_proc(window3, starting_process, starting_row);
+      continue;
+
+    }else if (get_input == (char)KEY_DOWN){
+      // DISABILITATO TEMPORANEAMENTE
+      continue;
+
+      starting_process = (starting_process + 1) % current_number_of_processes();
+      starting_row = (starting_row + 1) % max_y;
+
+      wclear(window3);
+      wrefresh(window3);
+      box(window3, (int)'|', (int)'-');
+
+      print_proc(window3, starting_process, starting_process);
+      continue;
+    }else if (!((get_input >= '0' && get_input <= '9') || ((get_input >= 'A' && get_input <= 'Z')) || (get_input >= 'a' && get_input <= 'z'))){
+      continue; // non è alpha-numerico
+    }
+    
+    window_input[j] = get_input;
+    wclear(window4);
+    box(window4, (int)'|', (int)'-');
+    mvwprintw(window4, 1, 2, "Ordina per: %s", window_input);
+    wrefresh(window4);
+    j++;
+  }
+
+  if(get_input != 'b' || get_input != 'B'){
+    if(window_input[0] == 'c' ||window_input[0] == 'C' || window_input[0] == 'd' || window_input[0] == 'D'){
+      if(window_input[1]>= 0 && window_input[1] <= 2){
+
+      }
+    }
+  }
+
+  while (!( get_input == 'b' || get_input == 'B')){
+    get_input = getch();
+  }
+
+
+  memset(window_input, 0, WINDOW_INPUT_LENGHT); // leak dati?
+
+  return;
 }
 
 void resize_term_custom(){ 

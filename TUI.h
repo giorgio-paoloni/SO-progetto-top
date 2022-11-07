@@ -19,6 +19,7 @@ void TUI_resume_interface();
 void TUI_easteregg_inferface();
 void TUI_find_interface();
 void TUI_kill_sleep_resume_interface();
+void TUI_orderby_interface();
 
 //utili
 void reset_to_default_interface();
@@ -39,9 +40,11 @@ void signal_handler(int sig);
 #define STATS_IF 6
 #define HELP_IF 7
 #define EASTEREGG_IF 8
+#define ORDERBY_IF 9
 
 //altro 
 #define WINDOW_INPUT_LENGHT 32
+#define WINDOW_INPUT_LENGHT2 3
 #define REFRESH_RATE 1
 #define BUF_LENGHT1 2048
 //altro pt2
@@ -62,3 +65,4 @@ void signal_handler(int sig);
 
 #define WINDOW4_Y 3
 #define WINDOW4_X 3
+
