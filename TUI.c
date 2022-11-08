@@ -24,6 +24,7 @@ struct sigaction signal_handler_struct, signal_handler_struct_old;
 int starting_row = 2, starting_process = 0;
 int find_starting_process = 0; // NB:diverso da starting_process
 
+pid_order_t *pid_order_v;// = (pid_order_t *)pid_order_alloc();
 
 int max_y, max_x;
 
@@ -36,11 +37,13 @@ void TUI_default_interface(){
   cpu_snapshot_t0 = cpu_snapshot_alloc(0);
   cpu_snapshot_t1 = cpu_snapshot_alloc(1);
 
+  pid_order_v = (pid_order_t *) pid_order_alloc(); //free
+
   sleep_value.tv_nsec = INTERVAL_MS;
   sleep_value.tv_sec = INTERVAL_S;
 
   sem_init(&sem1, 0, 1);
-  cpu_usage_var = (cpu_usage_t *)cpu_usage_alloc();
+  cpu_usage_var = (cpu_usage_t *) cpu_usage_alloc();
   
   pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
   pthread_detach(t1); // la inzializzo, non è aggiornata all'ultimo istante ma da l'impressione all'utente di averlo istantaneamente
@@ -673,7 +676,7 @@ void TUI_orderby_interface(){
 
   //sintassi:
   //C/D: crescente-decrescente
-  //9/1/2/3/4: PID/cmdline/...
+  //0/1/2/3/4: PID/cmdline/...
 
   current_if = ORDERBY_IF;
 
@@ -693,16 +696,16 @@ void TUI_orderby_interface(){
   mvwprintw(window4, 1, 2, "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)");
   wrefresh(window4);
 
-  print_proc(window3, starting_process, starting_row);
+  //print_proc(window3, starting_process, starting_row);
 
   memset(window_input, 0, WINDOW_INPUT_LENGHT);
 
   int j = 0;// j = indica le celle occupate dell'array window_input
   char get_input = 'a';
   // WINDOW_INPUT_LENGHT2 ridotto a 3 caratteri
-  while ( j < WINDOW_INPUT_LENGHT2){
+  while (0 && j < WINDOW_INPUT_LENGHT2){
     get_input = getch();
-    if (get_input == 'b' || get_input == 'B'){
+    if (/*get_input != '\n'||*/ get_input == 'b' || get_input == 'B'){
       //window_input[0] = 'b';
       break;
     }
@@ -779,15 +782,27 @@ void TUI_orderby_interface(){
     j++;
   }
 
-  if(get_input != 'b' || get_input != 'B'){
+  if( 0 && (get_input != 'b' || get_input != 'B')){
     if(window_input[0] == 'c' ||window_input[0] == 'C' || window_input[0] == 'd' || window_input[0] == 'D'){
       if(window_input[1]>= 0 && window_input[1] <= 2){
-
+        pid_order(pid_order_v, ORDERBY_PID_C);
+        pid_order_print(pid_order_v, window3, 0, 0);
       }
+    }else{
+      box(window4, (int)'|', (int)'-');
+      mvwprintw(window4, 1, 2, "%s %c", "METODO DI ORDINAMENTO NON PRESENTE!" , '\0');
+      wrefresh(window4);
     }
   }
 
-  while (!( get_input == 'b' || get_input == 'B')){
+  //disabilitate parti di codice
+
+  //pid_order(pid_order_v, ORDERBY_PID_C);
+  //pid_order(pid_order_v, ORDERBY_CMDLINE_D);
+  pid_order(pid_order_v, ORDERBY_PID_D);
+  pid_order_print(pid_order_v, window3, 0, 0);
+
+  while (!( get_input == '\n' || get_input == 'b' || get_input == 'B')){
     get_input = getch();
   }
 
@@ -966,6 +981,7 @@ void refresh_UI(){
 
   if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
   //devo differenziare tra le le UI chiamanti
+  if(current_if == ORDERBY_IF ) return; //temp
   
   wclear(window3);
   wrefresh(window3);

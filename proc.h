@@ -31,6 +31,9 @@
 #define BUFFER_CMDLINE_LENGHT2 32
 #define SEPARATOR1 " \t\n"
 #define SEPARATOR2 " \t\n:"
+#define SEPARATOR3 "/()"
+#define SEPARATOR4 "(): "
+#define SEPARATOR5 "\t "
 #define MAX_TOKEN1 25
 #define MAX_TOKEN2 5
 #define MAX_TOKEN3 11
@@ -99,8 +102,10 @@
 //https://en.wikibooks.org/wiki/Regular_Expressions/POSIX_Basic_Regular_Expressions
 //https://stackoverflow.com/questions/336210/regular-expression-for-alphanumeric-and-underscores
 
-#define ORDERBY_PID 0
-#define ORDERBY_CMDLINE 1
+#define ORDERBY_PID_C 0
+#define ORDERBY_PID_D 1
+#define ORDERBY_CMDLINE_C 2
+#define ORDERBY_CMDLINE_D 3
 //etc
 
 //struct
@@ -176,10 +181,12 @@ int number_of_regex_matches(char *string_to_compare);
 //
 void* pid_order_alloc();
 void pid_order(pid_order_t *ret, int orderby);
-void pid_order_print();
+void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_row, int starting_col);
 void pid_order_free(pid_order_t* ret);
 void pid_order_resize(pid_order_t *ret, int new_number_of_processes);
 void get_info_of_processes(pid_order_t *ret);
+void string_sort(pid_order_t *ret);
+void array_reverse_custom(pid_order_t *ret);
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C

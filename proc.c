@@ -869,17 +869,31 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
 void* pid_order_alloc(){
   //primo nodo (-1)
   pid_order_t* ret = (pid_order_t *)malloc(sizeof(pid_order_t));
-  ret->ordering_method = ORDERBY_PID;
+  ret->ordering_method = ORDERBY_PID_C;
   ret->num_proc = -1;
   ret->PID = NULL;
   ret->cmdline = NULL;
   //...
 
-  pid_order(ret, ORDERBY_PID);
+  pid_order(ret, ORDERBY_PID_C);
   return (void*) ret;
 }
 
-void pid_order_print(){
+void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_row, int starting_col){
+  /*mvwprintw(window, 1, 2, "PID%c", '\0');
+  wrefresh(window);
+  return;*/
+  int i = 0;
+  int local_max_y = getmaxy(window);
+  local_max_y -= 2; //questione di grafica
+
+  while(i < ret->num_proc && i < local_max_y  ){
+    //mvwprintw(window, 1 + i, 2, "PID: %d %c", ret->PID[i], '\0');
+    mvwprintw(window, 1 + i, 2, "PID: %d %s %c", ret->PID[i], ret->cmdline[i], '\0');
+    i++;
+  }
+
+  wrefresh(window);
   return;
 }
 
@@ -900,14 +914,22 @@ void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
   ret->max_size = new_max_size;
   ret->num_proc = 0;
 
-  ret->PID = realloc(ret->PID, new_max_size * sizeof(int));
-  ret->cmdline = realloc(ret->cmdline, new_max_size * CMD_LINE_LENGHT * sizeof(char)); // allocato contiguamente?
+  ret->PID = (int*) realloc(ret->PID, new_max_size * sizeof(int));
+  //da sistemare
+  ret->cmdline = (char**) realloc(ret->cmdline, new_max_size * sizeof(char*));
+  for(int i = 0; i < new_max_size; i++){
+    //ret->cmdline[i] = (char*) realloc(ret->cmdline[i], CMD_LINE_LENGHT * sizeof(char));
+    ret->cmdline[i] = (char*) malloc( CMD_LINE_LENGHT * sizeof(char));
+  }
+  
 
   return;
 }
 
 void pid_order(pid_order_t *ret, int orderby){
-  
+
+  if(ret == NULL)return; 
+
   ret->ordering_method = orderby;
   int cnp = current_number_of_processes();
   ret->num_proc = cnp;
@@ -917,10 +939,15 @@ void pid_order(pid_order_t *ret, int orderby){
   //if(ret->max_size >= cnp*4 ) pid_order_resize(ret, cnp);
 
   get_info_of_processes(ret);
-
-  if(orderby == ORDERBY_PID){
+  
+  if(orderby == ORDERBY_PID_C){
+    //già ordinati dal kernel per PID
     return;
-  }else if(orderby == ORDERBY_CMDLINE){
+  }else if(orderby == ORDERBY_PID_D){
+    array_reverse_custom(ret);
+    return;
+  }else if(orderby == ORDERBY_CMDLINE_C || orderby == ORDERBY_CMDLINE_D){
+    string_sort(ret);
     return;
   }
   
@@ -940,7 +967,10 @@ void get_info_of_processes(pid_order_t *ret){
   FILE* file_cmdline;
 
   char pid_cmdline[PID_CMDLINE_LENGHT];
-  char buffer_cmdline[BUFFER_CMDLINE_LENGHT]; 
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+
+  char *token = NULL;
+  char *prev_token = NULL;
 
   while( i < ret->num_proc && (proc_iter = readdir(proc_dir)) != NULL){
 
@@ -970,7 +1000,21 @@ void get_info_of_processes(pid_order_t *ret){
       if(strcmp(buffer_cmdline,"\0") == 0) continue;
 
       ret->PID[i] = atoi(proc_iter->d_name);
-      if (strcpy(ret->cmdline[i * CMD_LINE_LENGHT], buffer_cmdline) == NULL) return;
+
+      //pulisco cmdline da caratteri "sporchi" che impedirebbero un corretto ordinamento corretto
+      //da sistemare...
+      token = strtok(buffer_cmdline, SEPARATOR3);
+      while(token != NULL){
+        prev_token = token;
+        token = strtok(NULL, SEPARATOR3);
+        //rimuovo gli spazi dal token
+        token = strtok(token, SEPARATOR5);
+      }
+
+      strtok(prev_token, SEPARATOR4);
+      //strtok(prev_token, SEPARATOR4);
+
+      if (strcpy(ret->cmdline[i], prev_token) == NULL) return;
 
       i++;
     }
@@ -978,4 +1022,69 @@ void get_info_of_processes(pid_order_t *ret){
 
   closedir(proc_dir);
   return;
+}
+
+void string_sort(pid_order_t *ret){
+  //PER ORA USO UN SEMPLICE BUBBLE-SORT: O(n^2)
+  //credits. https://pencilprogrammer.com/c-programs/sort-names-in-alphabetical-order/
+  //preso e modificato
+
+  //NB:sostiture strcpy con strncpy (overflow safety)
+
+  char temp_str[CMD_LINE_LENGHT];
+  int temp_int;
+
+  int size_of_array = ret->num_proc;
+
+  for(int i=0; i < size_of_array; i++){
+    for(int j=0; j < size_of_array-1-i; j++){
+
+      
+      if( ret->ordering_method == ORDERBY_CMDLINE_C && strcmp(ret->cmdline[j], ret->cmdline[j+1]) > 0 ){
+        //swap array[j] and array[j+1]
+
+        strncpy(temp_str, ret->cmdline[j], CMD_LINE_LENGHT);
+        strncpy(ret->cmdline[j], ret->cmdline[j+1], CMD_LINE_LENGHT);
+        strncpy(ret->cmdline[j+1], temp_str, CMD_LINE_LENGHT);
+
+        temp_int = ret->PID[j];
+        ret->PID[j] = ret->PID[j+1];
+        ret->PID[j+1] = temp_int;
+
+      }else if( ret->ordering_method == ORDERBY_CMDLINE_D && strcmp(ret->cmdline[j], ret->cmdline[j+1]) < 0 ){
+        
+        strncpy(temp_str, ret->cmdline[j+1], CMD_LINE_LENGHT);
+        strncpy(ret->cmdline[j+1], ret->cmdline[j], CMD_LINE_LENGHT);
+        strncpy(ret->cmdline[j], temp_str, CMD_LINE_LENGHT);
+
+        temp_int = ret->PID[j+1];
+        ret->PID[j+1] = ret->PID[j];
+        ret->PID[j] = temp_int;
+
+      }
+    }
+  }
+
+
+
+  return;
+}
+
+void array_reverse_custom(pid_order_t *ret){
+
+  int temp_int;
+  char temp_str[CMD_LINE_LENGHT];
+  int size_of_array = ret->num_proc;
+
+  for(int i = 0; i < size_of_array/2 ; i++){
+
+    strncpy(temp_str, ret->cmdline[i], CMD_LINE_LENGHT);
+    strncpy(ret->cmdline[i], ret->cmdline[size_of_array - i - 1], CMD_LINE_LENGHT);
+    strncpy(ret->cmdline[size_of_array - i - 1], temp_str, CMD_LINE_LENGHT);
+
+    temp_int = ret->PID[i];
+    ret->PID[i] = ret->PID[size_of_array - i - 1];
+    ret->PID[size_of_array - i - 1] = temp_int;
+
+  }
 }
