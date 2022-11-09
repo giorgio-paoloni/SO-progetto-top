@@ -865,7 +865,6 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
   return count;
 }
 
-
 void* pid_order_alloc(){
   //primo nodo (-1)
   pid_order_t* ret = (pid_order_t *)malloc(sizeof(pid_order_t));
@@ -879,18 +878,20 @@ void* pid_order_alloc(){
   return (void*) ret;
 }
 
-void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_row, int starting_col){
-  /*mvwprintw(window, 1, 2, "PID%c", '\0');
-  wrefresh(window);
-  return;*/
-  int i = 0;
+void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
+
+  int i = starting_index, j = 0; // salto diversi incrementi inutili
+  //i indica la cella dell'array da cui stampare, j la riga della finestra in cui stampare
   int local_max_y = getmaxy(window);
   local_max_y -= 2; //questione di grafica
 
-  while(i < ret->num_proc && i < local_max_y  ){
-    //mvwprintw(window, 1 + i, 2, "PID: %d %c", ret->PID[i], '\0');
-    mvwprintw(window, 1 + i, 2, "PID: %d %s %c", ret->PID[i], ret->cmdline[i], '\0');
+  wclear(window);
+  box(window, (int)'|', (int)'-');
+
+  while(i < ret->num_proc && j < local_max_y  ){
+    mvwprintw(window, 1 + j, 2, "PID: %d %s %c", ret->PID[i], ret->cmdline[i], '\0');
     i++;
+    j++;
   }
 
   wrefresh(window);
@@ -928,8 +929,8 @@ void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
 
 void pid_order(pid_order_t *ret, int orderby){
 
-  if(ret == NULL)return; 
-
+  if(ret == NULL)return;
+  
   ret->ordering_method = orderby;
   int cnp = current_number_of_processes();
   ret->num_proc = cnp;
@@ -961,7 +962,7 @@ void get_info_of_processes(pid_order_t *ret){
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
 
-  int i = 0;
+  int i = 0, q = 0, check = 1;
 
   dirent* proc_iter;
   FILE* file_cmdline;
@@ -1004,17 +1005,26 @@ void get_info_of_processes(pid_order_t *ret){
       //pulisco cmdline da caratteri "sporchi" che impedirebbero un corretto ordinamento corretto
       //da sistemare...
       token = strtok(buffer_cmdline, SEPARATOR3);
-      while(token != NULL){
+      check = 1;
+      
+      while(check && token != NULL){
+        q = 0;
+
+        while(token[q]){
+          // ci sono dei cmdline veramente strani es: /../../spotify --params/120120a 90 spot/
+          //questo evita di tokenizzare i token se ci sono / oltre la cmdline di interesse
+          if(token[q] == ' ') check = 0;
+          q++;
+        }
+
         prev_token = token;
         token = strtok(NULL, SEPARATOR3);
         //rimuovo gli spazi dal token
-        token = strtok(token, SEPARATOR5);
       }
 
-      strtok(prev_token, SEPARATOR4);
-      //strtok(prev_token, SEPARATOR4);
+      token = strtok(prev_token, SEPARATOR4);
 
-      if (strcpy(ret->cmdline[i], prev_token) == NULL) return;
+      if (strcpy(ret->cmdline[i], token) == NULL) return;
 
       i++;
     }

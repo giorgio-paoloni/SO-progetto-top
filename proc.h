@@ -31,8 +31,8 @@
 #define BUFFER_CMDLINE_LENGHT2 32
 #define SEPARATOR1 " \t\n"
 #define SEPARATOR2 " \t\n:"
-#define SEPARATOR3 "/()"
-#define SEPARATOR4 "(): "
+#define SEPARATOR3 "/"
+#define SEPARATOR4 "@()[]:\t "
 #define SEPARATOR5 "\t "
 #define MAX_TOKEN1 25
 #define MAX_TOKEN2 5
@@ -181,7 +181,7 @@ int number_of_regex_matches(char *string_to_compare);
 //
 void* pid_order_alloc();
 void pid_order(pid_order_t *ret, int orderby);
-void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_row, int starting_col);
+void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index);
 void pid_order_free(pid_order_t* ret);
 void pid_order_resize(pid_order_t *ret, int new_number_of_processes);
 void get_info_of_processes(pid_order_t *ret);
