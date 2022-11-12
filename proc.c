@@ -219,25 +219,25 @@ char* print_PID_stats(char* path){
   int length = 0;
 
   length += snprintf(ret + length, RET_LENGHT - length, "%-20s  %1c  %2ld  %8.2f  %8.2f  %8.2f  %6.2f%%  %6.2f%% ", command, state, priority, total_time_sec, user_time_sec, superuser_time_sec, cpu_percentage_used_time_sec, used_physical_memory_percentage);
-
+  //Lf controlla
   if (used_physical_memory < KB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6lldB", used_physical_memory);
+    length += snprintf(ret + length, RET_LENGHT - length, "  %8lldB", used_physical_memory);
   }else if (used_physical_memory >= KB_SIZE && used_physical_memory < MB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2lfK", ((double)used_physical_memory )/ ((double)KB_SIZE));
+    length += snprintf(ret + length, RET_LENGHT - length, "  %8.2LfK", (long double) ((double)used_physical_memory )/ ((double)KB_SIZE));
   }else if (used_physical_memory >= MB_SIZE && used_physical_memory < GB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2lfM", ((double)used_physical_memory )/ ((double)MB_SIZE));
+    length += snprintf(ret + length, RET_LENGHT - length, "  %8.2LfM", (long double) ((double)used_physical_memory) / ((double)MB_SIZE));
   }else if(used_physical_memory >= GB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2lfG", ((double)used_physical_memory) / ((double)GB_SIZE));
+    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2LfG", (long double) ((double)used_physical_memory) / ((double)GB_SIZE));
   }
 
   if (vm_size < KB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6ldB%c", vm_size, '\0');
+    length += snprintf(ret + length, RET_LENGHT - length, "  %8ldB%c", vm_size, '\0');
   }else if (vm_size >= KB_SIZE && vm_size < MB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2fK%c", ((double) vm_size )/ ((double)KB_SIZE) , '\0');
+    length += snprintf(ret + length, RET_LENGHT - length, "  %8.2fK%c", ((double) vm_size )/ ((double)KB_SIZE) , '\0');
   }else if (vm_size >= MB_SIZE && vm_size < GB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2fM%c", ((double)vm_size) / ((double)MB_SIZE), '\0');
+    length += snprintf(ret + length, RET_LENGHT - length, "  %8.2fM%c", ((double)vm_size) / ((double)MB_SIZE), '\0');
   }else if(vm_size >= GB_SIZE){
-    length += snprintf(ret + length, RET_LENGHT - length, "  %6.2fG%c",((double)vm_size) / ((double)GB_SIZE), '\0');
+    length += snprintf(ret + length, RET_LENGHT - length, "  %8.2fG%c",((double)vm_size) / ((double)GB_SIZE), '\0');
   }
 
   
@@ -375,7 +375,7 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
     //"PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES-KB", "VIRT-KB", '\0');
     //CPU% +1 perché c'è %
     //CPU% +1 perché c'è K/M/G
-    mvwprintw(window, 1, 2, "%-6s  %-20s  %-1s  %-2s  %8s  %8s  %8s  %7s  %7s   %7s  %7s%c", "PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES", "VIRT", '\0');
+    mvwprintw(window, 1, 2, "%-6s  %-20s  %-1s  %-2s  %8s  %8s  %8s  %7s  %7s   %9s  %9s%c", "PID", "CMD", "S", "PR", "TT-s", "UT-s", "SU-s", "%CPU", "%MEM", "RES", "VIRT", '\0');
   }
 
   while((proc_iter = readdir(proc_dir)) != NULL && i < (max_y - 1) ){
@@ -872,6 +872,8 @@ void* pid_order_alloc(){
   ret->num_proc = -1;
   ret->PID = NULL;
   ret->cmdline = NULL;
+  ret->RES = NULL;
+  ret->VIRT = NULL;
   //...
 
   pid_order(ret, ORDERBY_PID_C);
@@ -884,16 +886,48 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
   //i indica la cella dell'array da cui stampare, j la riga della finestra in cui stampare
   int local_max_y = getmaxy(window);
   local_max_y -= 2; //questione di grafica
+  int length;
+  
+  char l_buf[RET_LENGHT]; //ok
+
 
   wclear(window);
   box(window, (int)'|', (int)'-');
 
-  while(i < ret->num_proc && j < local_max_y  ){
-    mvwprintw(window, 1 + j, 2, "PID: %d %s %c", ret->PID[i], ret->cmdline[i], '\0');
+  while( i < ret->num_proc && j < local_max_y  ){
+    length = 0;
+    //Lf controlla
+    if (ret->RES[i] < KB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.0LfB", (long double) ret->RES[i]);
+    }else if (ret->RES[i] >= KB_SIZE && ret->RES[i] < MB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2LfK", (long double)((double)ret->RES[i]) / ((double)KB_SIZE));
+    }else if (ret->RES[i] >= MB_SIZE && ret->RES[i] < GB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2LfM", (long double)((double)ret->RES[i]) / ((double)MB_SIZE));
+    }else if(ret->RES[i] >= GB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2LfG", (long double)((double)ret->RES[i]) / ((double)GB_SIZE));
+    }
+
+    if (ret->VIRT[i] < KB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.0fB%c", (double) ret->VIRT[i], '\0');
+    }else if (ret->VIRT[i] >= KB_SIZE && ret->VIRT[i] < MB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2fK%c", ((double)ret->VIRT[i]) / ((double)KB_SIZE), '\0');
+    }else if (ret->VIRT[i] >= MB_SIZE && ret->VIRT[i] < GB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2fM%c", ((double)ret->VIRT[i]) / ((double)MB_SIZE), '\0');
+    }else if(ret->VIRT[i] >= GB_SIZE){
+      length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2fG%c", ((double)ret->VIRT[i]) / ((double)GB_SIZE), '\0');
+    }
+
+    if(ret->ordering_method == ORDERBY_PID_C || ret->ordering_method == ORDERBY_PID_D ||ret->ordering_method == ORDERBY_CMDLINE_C || ret->ordering_method == ORDERBY_CMDLINE_D ){
+      //mvwprintw(window, 1 + j, 2, "PID: %d %s %c", ret->PID[i], ret->cmdline[i], '\0');
+      mvwprintw(window, 1 + j, 2, "PID: %8d %s %c", ret->PID[i], l_buf, '\0');
+    }else{
+      mvwprintw(window, 1 + j, 2, "PID: %8d %s %c", ret->PID[i], l_buf, '\0');
+    }
+      
     i++;
     j++;
   }
-
+  
   wrefresh(window);
   return;
 }
@@ -906,7 +940,8 @@ void pid_order_free(pid_order_t* ret){
 
   free(ret->PID);
   free(ret->cmdline);
-
+  free(ret->RES);
+  free(ret->VIRT);
   free(ret);
 
   return;
@@ -922,12 +957,15 @@ void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
     new_max_size = DECREASE_FACTOR * new_number_of_processes;
   }
   
+  //prima run max_size = 0, impostata alla fine, altrimenti da segm fault
   for (int i = 0; i < ret->max_size; i++){
     free(ret->cmdline[i]);
   }
 
   ret->PID = (int*) realloc(ret->PID, new_max_size * sizeof(int));
   ret->cmdline = (char**) realloc(ret->cmdline, new_max_size * sizeof(char*));
+  ret->RES = (long double *)realloc(ret->RES, new_max_size * sizeof(long long));
+  ret->VIRT = (double *)realloc(ret->VIRT, new_max_size * sizeof(long unsigned));
 
   for(int i = 0; i < new_max_size; i++){
     //ret->cmdline[i] = (char*) realloc(ret->cmdline[i], CMD_LINE_LENGHT * sizeof(char));
@@ -1119,7 +1157,7 @@ void get_info_of_processes(pid_order_t *ret){
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
 
-  int i = 0, q = 0, check = 1;
+  int i = 0, j = 0, q = 0, check = 1;
 
   dirent* proc_iter;
   FILE* file_cmdline;
@@ -1133,6 +1171,37 @@ void get_info_of_processes(pid_order_t *ret){
 
   char *token = NULL;
   char *prev_token = NULL;
+
+  //CPU
+  long int frequency = sysconf(_SC_CLK_TCK);//dal man proc, frequenza variabile?
+  //clock
+  long unsigned int user_time_clock;
+  long unsigned int superuser_time_clock;
+  long long unsigned int start_time_clock;
+  //sec
+  double elapsed_time_sec;
+  double system_uptime_sec;
+  double cpu_percentage_used_time_sec;
+  double superuser_time_sec;
+  double user_time_sec;
+  double total_time_sec;
+
+  double start_time_sec;
+
+  //MEM
+  struct sysinfo system_information;
+  if(sysinfo(&system_information) == -1) return;
+
+  unsigned long total_physical_memory = system_information.totalram / 1024; //ritorna in bytes, converto in KB
+  long rss;
+  long long used_physical_memory;
+  double used_physical_memory_percentage;
+  long unsigned vm_size;
+
+  if(page_size == -1){
+    page_size = sysconf(_SC_PAGESIZE)/1024; //mostrata in KB
+  }
+
 
   while( i < ret->num_proc && (proc_iter = readdir(proc_dir)) != NULL){
 
@@ -1165,7 +1234,6 @@ void get_info_of_processes(pid_order_t *ret){
         fclose(file_cmdline);
         continue;
       }
-
 
       //entrambi i file aperti
       if (fgets(buffer_cmdline, BUFFER_CMDLINE_LENGHT, file_cmdline) == NULL || fgets(buffer_stat, BUFFER_STAT_LENGHT, file_stat) == NULL){ // err
@@ -1205,11 +1273,59 @@ void get_info_of_processes(pid_order_t *ret){
 
       if (strcpy(ret->cmdline[i], token) == NULL) return;
 
+      
+      //ora ottengo i valori da /proc/[pid]/stat
+      j = 1; //FORSE = 1?, controlla
+      token = strtok(buffer_stat, SEPARATOR1);
+
+      while(token != NULL && j < MAX_TOKEN1){//strtok
+        if(j == 14){//utime  %lu : tempo speso dal processo in user
+          user_time_clock = strtoul(token, NULL, 10); // https://pubs.opengroup.org/onlinepubs/9699919799/functions/strtoul.html
+        }else if(j == 15){//stime  %lu : tempo speso dal processo in superuser (kernel)
+          superuser_time_clock = strtoul(token, NULL, 10);
+        }else if(j == 22){//starttime  %llu : tempo di avvio del processo a partire dal boot
+          start_time_clock = strtoull(token, NULL, 10);
+        }else if(j == 23){//vsize  %lu
+          vm_size = strtoul(token, NULL, 10);// / 1000 ; //e' segnato in bytes, converto in KB
+        }else if(j == 24){//(24) rss  %ld 
+          rss = strtol(token, NULL, 10);
+          used_physical_memory = rss * page_size; //è in BYTES (ex//KB RES )
+        }
+
+        token = strtok(NULL, SEPARATOR1);
+        j++;
+      }
+
+      if (frequency == 0) return; // err, divisione per 0
+
+      user_time_sec = (double)user_time_clock / (double)frequency;
+      superuser_time_sec = (double)superuser_time_clock / (double)frequency;
+      start_time_sec = (double)start_time_clock / (double)frequency;
+      total_time_sec = (double)(user_time_sec + superuser_time_sec); // overflow somma?
+
+      system_uptime_sec = (double)get_system_uptime();
+      if (system_uptime_sec == 0) return; //è una casistica impossibile(?)
+
+      elapsed_time_sec = (double)system_uptime_sec - (double)start_time_sec;
+      cpu_percentage_used_time_sec = (double)(total_time_sec * 100) / (double)elapsed_time_sec;
+      if (cpu_percentage_used_time_sec > 100) cpu_percentage_used_time_sec = 100; // test
+
+      ret->RES[i] = (long double) used_physical_memory;//((double)used_physical_memory) / ((double)MB_SIZE);
+      ret->VIRT[i] = (double) vm_size ;// ((double)vm_size) / ((double)MB_SIZE);
 
       i++;
     }
   }
 
+  //ret->num_proc = i;
   closedir(proc_dir);
+  return;
+}
+
+void qsort_custom(pid_order_t *ret){
+  //C fornisce qsort nella stdlib se non sbaglio, ma qui ho array parralleli nella struttura pid_order_t
+  //semplicemente mi copio uno snippet qsort e lo adatto alla mia situazione
+  
+  //TBD
   return;
 }

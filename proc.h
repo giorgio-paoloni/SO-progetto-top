@@ -147,6 +147,13 @@ typedef struct pid_order_t{
     //array di stringhe, dimensioni fixed CMD_LINE_LENGHT per ciascuna stringa
     // { [....][....]...[....] }*NUM_PROC
     char** cmdline;
+    
+    long double *RES;
+    double* VIRT;
+
+    //double* cpu_percentage_used_time_sec;
+    //double* used_physical_memory_percentage;
+
     //etc
 }pid_order_t;
 
@@ -187,6 +194,7 @@ void pid_order_resize(pid_order_t *ret, int new_number_of_processes);
 void get_info_of_processes(pid_order_t *ret);
 void string_sort(pid_order_t *ret);
 void array_reverse_custom(pid_order_t *ret);
+void qsort_custom(pid_order_t *ret);
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C
