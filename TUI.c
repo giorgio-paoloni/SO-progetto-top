@@ -84,7 +84,7 @@ void TUI_default_interface(){
   //box(window2, (int) '|', (int) '-');%d
   box(window3, (int) '|', (int) '-');
 
-  mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats", '\0');
+  mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (o)orderby, (s)stats", '\0');
   //mvwprintw(window1, 2, 2, "R = %d C = %d", max_y, max_x);
 
   wclear(window4);
@@ -497,29 +497,23 @@ void TUI_find_interface(){
 
 void reset_to_default_interface(){
 
-  //current_if = DEFAULT_IF;//per le chiamate asincrone di timer interrupt ecc
-
-  mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats", '\0');
+  mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (o)orderby, (s)stats", '\0');
   wrefresh(window1);
-
-  wclear(window4);
-  wrefresh(window4);
 
   //box(window2, (int) '|', (int) '-');
   //wrefresh(window2);
 
-  wresize(window3, max_y-3, max_x);
-  wrefresh(window3);
+  wclear(window4); //prima di window3 per una questione di UI
+  wrefresh(window4);
 
+  wresize(window3, max_y-3, max_x);
   mvwin(window3, 3, 0);
   wclear(window3);
-  wrefresh(window3);
-
   box(window3, (int) '|', (int) '-');
-
   print_proc(window3, starting_process, starting_row);
   wrefresh(window3);
 
+  memset(window_input, 0, WINDOW_INPUT_LENGHT); //questione data leak
 }
 
 void TUI_kill_sleep_resume_interface(){
@@ -698,21 +692,22 @@ void TUI_orderby_interface(){
   mvwprintw(window4, 1, 2,"%s %c", "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)", '\0');
   wrefresh(window4);
 
-  //print_proc(window3, starting_process, starting_row);
-  mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento...", '\0');
+  mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
   mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
-  mvwprintw(window3, 4, 2, "%s %c", "Ordine: (c)crescente (d)decrescente", '\0');
-  mvwprintw(window3, 5, 2, "%s %c", "Campo da ordinare: (0)PID (1)cmdline", '\0');
+  mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
+  mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
   mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
   wrefresh(window3);
 
   memset(window_input, 0, WINDOW_INPUT_LENGHT);
 
   int j = 0;// j = indica le celle occupate dell'array window_input
-  char get_input = 'a';
+  char get_input;
   // WINDOW_INPUT_LENGHT2 ridotto a 3 caratteri
   while (j < WINDOW_INPUT_LENGHT2){
+
     get_input = getch();
+
     if (get_input == '\n'|| get_input == 'b' || get_input == 'B'){
       //window_input[0] = 'b';
       break;
@@ -742,43 +737,8 @@ void TUI_orderby_interface(){
       j--;
       continue;
     }
-
-    if (get_input == (char)KEY_UP){
-      //DISABILITATO TEMPORANEAMENTE
-      continue;
-
-      if (starting_process > 0){
-        starting_process--;
-      }else{
-        starting_process = current_number_of_processes() - 1;
-      }
-
-      if (starting_row > 0){
-        starting_row--;
-      }else{
-        starting_row = max_y;
-      }
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int)'|', (int)'-');
-      print_proc(window3, starting_process, starting_row);
-      continue;
-
-    }else if (get_input == (char)KEY_DOWN){
-      // DISABILITATO TEMPORANEAMENTE
-      continue;
-
-      starting_process = (starting_process + 1) % current_number_of_processes();
-      starting_row = (starting_row + 1) % max_y;
-
-      wclear(window3);
-      wrefresh(window3);
-      box(window3, (int)'|', (int)'-');
-
-      print_proc(window3, starting_process, starting_process);
-      continue;
-    }else if (!((get_input >= '0' && get_input <= '9') || ((get_input >= 'A' && get_input <= 'Z')) || (get_input >= 'a' && get_input <= 'z'))){
+    
+    if (!((get_input >= '0' && get_input <= '9') || ((get_input >= 'A' && get_input <= 'Z')) || (get_input >= 'a' && get_input <= 'z'))){
       continue; // non è alpha-numerico
     }
     
@@ -877,13 +837,13 @@ void resize_term_custom(){
   refresh();//importante
 
   wclear(window1);
-  wclear(window3);
-  wclear(window4);
-
   wrefresh(window1);
+
+  wclear(window3);
   wrefresh(window3);
+
+  wclear(window4);
   wrefresh(window4);
-  
 
   /*//DEBUG
   mvwprintw(window1, 1, 1, "LINES = %d, COLS = %d", max_y, max_x);
@@ -912,7 +872,7 @@ void resize_term_custom(){
 
     wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int) '|', (int) '-');
-    mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (s)stats", '\0');
+    mvwprintw(window1, 1, 2, "%s %c", "(h)help, (q)quit, (k)kill, (z)sleep, (r)resume, (l)list, (f)find, (o)orderby, (s)stats", '\0');
     wrefresh(window1);
 
     wresize(window3, max_y-3, max_x);
@@ -1018,21 +978,58 @@ void resize_term_custom(){
 
   }else if(current_if == ORDERBY_IF){
 
+    wresize(window1, WINDOW1_Y, max_x);
+    box(window1, (int)'|', (int)'-');
+    mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+    wrefresh(window1);
+
+    wresize(window3, max_y - 6, max_x);
+    box(window3, (int)'|', (int)'-');
+    wrefresh(window3);
+    
+    wresize(window4, WINDOW4_Y, max_x);
+    box(window4, (int)'|', (int)'-');
+
+    if(window_input[0] == '\0'){
+      mvwprintw(window4, 1, 2, "%s %c", "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)", '\0');
+      mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
+      mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
+      mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
+      mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
+      mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
+    }else{
+      if (window_input[0] != '\0' && window_input[1] != '\0'&& window_input[2] == '\n'){
+        mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "???", '\0');
+        pid_order(pid_order_v, pid_order_v->ordering_method);
+        pid_order_print(pid_order_v, window3, 0);
+      }else{
+        mvwprintw(window4, 1, 2, "Ordina per: %s %c", window_input, '\0');
+        mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
+        mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
+        mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
+        mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
+        mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
+      }
+    }
+
+    wrefresh(window3);
+    wrefresh(window4);
+  
+
   }
   //etc...
 
-  //refresh();
 }
 
 void refresh_UI(){
 
-  if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return;
+  if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return; //schermate statiche
   //devo differenziare tra le le UI chiamanti
-  if(current_if == ORDERBY_IF ) return; //temp
+  //if(current_if == ORDERBY_IF ) return; //temp
   
   wclear(window3);
-  wrefresh(window3);
   box(window3, (int) '|', (int) '-');
+  wrefresh(window3);
 
   if(current_if == STATS_IF){
     print_stats(window3, starting_process, starting_row);
@@ -1064,7 +1061,6 @@ void refresh_UI(){
     wrefresh(window4);
 
   }else if(current_if == ORDERBY_IF){
-    //disabilitata temporaneamente
     
     box(window1, (int)'|', (int)'-');
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
@@ -1079,23 +1075,22 @@ void refresh_UI(){
     
     if(window_input[0] == '\0'){
       mvwprintw(window4, 1, 2, "%s %c", "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)", '\0');
-      mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento...", '\0');
+      mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
       mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
-      mvwprintw(window3, 4, 2, "%s %c", "Ordine: (c)crescente (d)decrescente", '\0');
-      mvwprintw(window3, 5, 2, "%s %c", "Campo da ordinare: (0)PID (1)cmdline", '\0');
+      mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
+      mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
       mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
-
     }else{
       if (window_input[0] != '\0' && window_input[1] != '\0'&& window_input[2] == '\n'){
         mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "???", '\0');
-        pid_order(pid_order_v, ORDERBY_CMDLINE_D);
+        pid_order(pid_order_v, pid_order_v->ordering_method);
         pid_order_print(pid_order_v, window3, 0);
       }else{
         mvwprintw(window4, 1, 2, "Ordina per: %s %c", window_input, '\0');
-        mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento...", '\0');
+        mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
         mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
-        mvwprintw(window3, 4, 2, "%s %c", "Ordine: (c)crescente (d)decrescente", '\0');
-        mvwprintw(window3, 5, 2, "%s %c", "Campo da ordinare: (0)PID (1)cmdline", '\0');
+        mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
+        mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
         mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
       }
     }

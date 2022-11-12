@@ -899,6 +899,16 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
 }
 
 void pid_order_free(pid_order_t* ret){
+
+  for (int i = 0; i < ret->max_size; i++){
+    free(ret->cmdline[i]);
+  }
+
+  free(ret->PID);
+  free(ret->cmdline);
+
+  free(ret);
+
   return;
 }
 
@@ -911,18 +921,21 @@ void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
   }else{
     new_max_size = DECREASE_FACTOR * new_number_of_processes;
   }
-
-  ret->max_size = new_max_size;
-  ret->num_proc = 0;
+  
+  for (int i = 0; i < ret->max_size; i++){
+    free(ret->cmdline[i]);
+  }
 
   ret->PID = (int*) realloc(ret->PID, new_max_size * sizeof(int));
-  //da sistemare
   ret->cmdline = (char**) realloc(ret->cmdline, new_max_size * sizeof(char*));
+
   for(int i = 0; i < new_max_size; i++){
     //ret->cmdline[i] = (char*) realloc(ret->cmdline[i], CMD_LINE_LENGHT * sizeof(char));
     ret->cmdline[i] = (char*) malloc( CMD_LINE_LENGHT * sizeof(char));
   }
-  
+
+  ret->max_size = new_max_size;
+  ret->num_proc = 0;
 
   return;
 }
@@ -955,7 +968,7 @@ void pid_order(pid_order_t *ret, int orderby){
   return;
 }
 
-void get_info_of_processes(pid_order_t *ret){
+void get_info_of_processes2(pid_order_t *ret){
 
   if(ret == NULL) return;
   
@@ -1097,4 +1110,106 @@ void array_reverse_custom(pid_order_t *ret){
     ret->PID[size_of_array - i - 1] = temp_int;
 
   }
+}
+
+void get_info_of_processes(pid_order_t *ret){
+
+  if(ret == NULL) return;
+  
+  DIR* proc_dir;
+  if((proc_dir = opendir(PROC_PATH)) == NULL) return;
+
+  int i = 0, q = 0, check = 1;
+
+  dirent* proc_iter;
+  FILE* file_cmdline;
+  FILE* file_stat;
+
+  char pid_cmdline[PID_CMDLINE_LENGHT];
+  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
+
+  char pid_stat[PID_STAT_LENGHT];
+  char buffer_stat[BUFFER_STAT_LENGHT];
+
+  char *token = NULL;
+  char *prev_token = NULL;
+
+  while( i < ret->num_proc && (proc_iter = readdir(proc_dir)) != NULL){
+
+    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+    memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
+    memset(pid_stat, 0, PID_STAT_LENGHT);
+
+    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
+
+      strcpy(pid_cmdline, PROC_PATH);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, proc_iter->d_name);
+      strcat(pid_cmdline, "/");
+      strcat(pid_cmdline, "cmdline");
+      strcat(pid_cmdline, "\0");
+
+      strcpy(pid_stat, PROC_PATH);
+      strcat(pid_stat, "/");
+      strcat(pid_stat, proc_iter->d_name);
+      strcat(pid_stat, "/");
+      strcat(pid_stat, "stat");
+      strcat(pid_stat, "\0");
+
+      if((file_cmdline = fopen(pid_cmdline, "r")) == NULL ){
+        continue;
+      }
+
+      if ((file_stat = fopen(pid_stat, "r")) == NULL){
+        fclose(file_cmdline);
+        continue;
+      }
+
+
+      //entrambi i file aperti
+      if (fgets(buffer_cmdline, BUFFER_CMDLINE_LENGHT, file_cmdline) == NULL || fgets(buffer_stat, BUFFER_STAT_LENGHT, file_stat) == NULL){ // err
+        fclose(file_cmdline);
+        fclose(file_stat);
+        continue;
+      }
+
+      //entrambi i file "letti"
+
+      fclose(file_cmdline);
+      fclose(file_stat);
+
+      ret->PID[i] = atoi(proc_iter->d_name);
+
+      //pulisco cmdline da caratteri "sporchi" che impedirebbero un corretto ordinamento corretto
+      //da sistemare...
+      token = strtok(buffer_cmdline, SEPARATOR3);
+      check = 1;
+      
+      while(check && token != NULL){
+        q = 0;
+
+        while(token[q]){
+          // ci sono dei cmdline veramente strani es: /../../spotify --params/120120a 90 spot/
+          //questo evita di tokenizzare i token se ci sono / oltre la cmdline di interesse
+          if(token[q] == ' ') check = 0;
+          q++;
+        }
+
+        prev_token = token;
+        token = strtok(NULL, SEPARATOR3);
+        //rimuovo gli spazi dal token
+      }
+
+      token = strtok(prev_token, SEPARATOR4);
+
+      if (strcpy(ret->cmdline[i], token) == NULL) return;
+
+
+      i++;
+    }
+  }
+
+  closedir(proc_dir);
+  return;
 }
