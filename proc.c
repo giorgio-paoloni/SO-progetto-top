@@ -917,12 +917,13 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
       length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2fG%c", ((double)ret->VIRT[i]) / ((double)GB_SIZE), '\0');
     }
 
-    if(ret->ordering_method == ORDERBY_PID_C || ret->ordering_method == ORDERBY_PID_D ||ret->ordering_method == ORDERBY_CMDLINE_C || ret->ordering_method == ORDERBY_CMDLINE_D ){
+    mvwprintw(window, 1 + j, 2, "PID: %8d %-30s %s %c", ret->PID[i], ret->cmdline[i], l_buf, '\0');
+    /*if(ret->ordering_method == ORDERBY_PID_C || ret->ordering_method == ORDERBY_PID_D ||ret->ordering_method == ORDERBY_CMDLINE_C || ret->ordering_method == ORDERBY_CMDLINE_D ){
       //mvwprintw(window, 1 + j, 2, "PID: %d %s %c", ret->PID[i], ret->cmdline[i], '\0');
-      mvwprintw(window, 1 + j, 2, "PID: %8d %s %c", ret->PID[i], l_buf, '\0');
+      mvwprintw(window, 1 + j, 2, "PID: %8d %-32s %s %c", ret->PID[i], ret->cmdline[i], l_buf, '\0');
     }else{
-      mvwprintw(window, 1 + j, 2, "PID: %8d %s %c", ret->PID[i], l_buf, '\0');
-    }
+      mvwprintw(window, 1 + j, 2, "PID: %8d %-32s %s %c", ret->PID[i], ret->cmdline[i], l_buf, '\0');
+    }*/
       
     i++;
     j++;
@@ -964,8 +965,8 @@ void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
 
   ret->PID = (int*) realloc(ret->PID, new_max_size * sizeof(int));
   ret->cmdline = (char**) realloc(ret->cmdline, new_max_size * sizeof(char*));
-  ret->RES = (long double *)realloc(ret->RES, new_max_size * sizeof(long long));
-  ret->VIRT = (double *)realloc(ret->VIRT, new_max_size * sizeof(long unsigned));
+  ret->RES = (long double *)realloc(ret->RES, new_max_size * sizeof(long double));
+  ret->VIRT = (double *)realloc(ret->VIRT, new_max_size * sizeof(double));
 
   for(int i = 0; i < new_max_size; i++){
     //ret->cmdline[i] = (char*) realloc(ret->cmdline[i], CMD_LINE_LENGHT * sizeof(char));
@@ -982,6 +983,13 @@ void pid_order(pid_order_t *ret, int orderby){
 
   if(ret == NULL)return;
   
+  //temporaneo test
+  //orderby = ORDERBY_RES_C;
+  //orderby = ORDERBY_RES_D;
+  //orderby = ORDERBY_VIRT_C;
+  //orderby = ORDERBY_VIRT_D;
+  orderby = ORDERBY_CMDLINE_C;
+
   ret->ordering_method = orderby;
   int cnp = current_number_of_processes();
   ret->num_proc = cnp;
@@ -991,7 +999,7 @@ void pid_order(pid_order_t *ret, int orderby){
   //if(ret->max_size >= cnp*4 ) pid_order_resize(ret, cnp);
 
   get_info_of_processes(ret);
-  
+
   if(orderby == ORDERBY_PID_C){
     //già ordinati dal kernel per PID
     return;
@@ -999,7 +1007,11 @@ void pid_order(pid_order_t *ret, int orderby){
     array_reverse_custom(ret);
     return;
   }else if(orderby == ORDERBY_CMDLINE_C || orderby == ORDERBY_CMDLINE_D){
-    string_sort(ret);
+    qsort_custom(ret);
+    //string_sort(ret);
+    return;
+  }else if(CHECK_ORDERBY_RES || CHECK_ORDERBY_VIRT){
+    qsort_custom(ret);
     return;
   }
   
@@ -1081,6 +1093,9 @@ void get_info_of_processes2(pid_order_t *ret){
     }
   }
 
+  //potrebbero essere stati terminati alcuni nel mentre
+  ret->num_proc = i; //test
+
   closedir(proc_dir);
   return;
 }
@@ -1089,8 +1104,6 @@ void string_sort(pid_order_t *ret){
   //PER ORA USO UN SEMPLICE BUBBLE-SORT: O(n^2)
   //credits. https://pencilprogrammer.com/c-programs/sort-names-in-alphabetical-order/
   //preso e modificato
-
-  //NB:sostiture strcpy con strncpy (overflow safety)
 
   char temp_str[CMD_LINE_LENGHT];
   int temp_int;
@@ -1317,15 +1330,133 @@ void get_info_of_processes(pid_order_t *ret){
     }
   }
 
-  //ret->num_proc = i;
+  // potrebbero essere stati terminati alcuni nel mentre
+  //ret->num_proc = i; // test
   closedir(proc_dir);
   return;
 }
 
 void qsort_custom(pid_order_t *ret){
   //C fornisce qsort nella stdlib se non sbaglio, ma qui ho array parralleli nella struttura pid_order_t
-  //semplicemente mi copio uno snippet qsort e lo adatto alla mia situazione
-  
-  //TBD
+  //semplicemente mi copio uno snippet qsort(iterativo) e lo adatto alla mia situazione
+  //credits.snippet https://www.geeksforgeeks.org/iterative-quick-sort/
+
+  /*char try[CMD_LINE_LENGHT];
+  strncpy(try, ret->cmdline[ret->num_proc], CMD_LINE_LENGHT);
+  return;*/
+
+  int l = 0, h = ret->num_proc-1;
+  int p, i, j;
+  long double x;
+
+  //char* x_str = NULL;
+  char x_str[CMD_LINE_LENGHT];
+  //strncpy(x_str, ret->cmdline[h], CMD_LINE_LENGHT);
+  //return;
+
+  // initialize top of stack
+  int top = -1;
+  // Create an auxiliary stack
+  int stack[h - l + 1];
+  // push initial values of l and h to stack
+  stack[++top] = l;
+  stack[++top] = h;
+
+  // Keep popping from stack while is not empty
+  while (top >= 0) {
+    // Pop h and l
+    h = stack[top--];
+    l = stack[top--];
+
+    // Set pivot element at its correct position
+    // in sorted array
+
+  //start partition
+
+    /*if (CHECK_ORDERBY_RES){
+      x = ret->RES[h];
+    }else if(CHECK_ORDERBY_CMDLINE){
+      //x_str = ret->cmdline[h];
+      //strncpy(x_str, ret->cmdline[h], CMD_LINE_LENGHT); //segv,?? con h, con l va
+    }else{
+      x = ret->VIRT[h];
+    }*/
+
+    i = (l - 1);
+
+    for (j = l; j < h; j++){
+
+      if (CHECK_ORDERBY_RES_C && ret->RES[j] < ret->RES[h]){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_RES_D && ret->RES[j] > ret->RES[h]){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_VIRT_C && ret->VIRT[j] < ret->VIRT[h]){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_VIRT_D && ret->VIRT[j] > ret->VIRT[h]){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_CMDLINE_C && strcmp(ret->cmdline[j], ret->cmdline[h]) < 0){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_CMDLINE_D && strcmp(ret->cmdline[j], ret->cmdline[h]) > 0){
+        i++;
+        swap_custom(ret, i, j);
+      }
+
+    }
+
+    swap_custom(ret, i+1, h);
+    p = (i + 1);
+
+  //stop partition
+
+    // If there are elements on left side of pivot,
+    // then push left side to stack
+    if (p - 1 > l) {
+        stack[++top] = l;
+        stack[++top] = p - 1;
+    }
+
+    // If there are elements on right side of pivot,
+    // then push right side to stack
+    if (p + 1 < h) {
+        stack[++top] = p + 1;
+        stack[++top] = h;
+    }
+  }
+
+  return;
+}
+
+void swap_custom(pid_order_t* ret, int i, int j){
+
+  //check overflow
+  if(i < 0 || i >= ret->num_proc) return;
+  if(j < 0 || j >= ret->num_proc) return;
+
+  char temp_str[CMD_LINE_LENGHT];
+  int temp_int;
+  double temp_double;
+  long double temp_ldouble;
+
+  strncpy(temp_str, ret->cmdline[i], CMD_LINE_LENGHT);
+  strncpy(ret->cmdline[i], ret->cmdline[j], CMD_LINE_LENGHT);
+  strncpy(ret->cmdline[j], temp_str, CMD_LINE_LENGHT);
+
+  temp_int = ret->PID[i];
+  ret->PID[i] = ret->PID[j];
+  ret->PID[j] = temp_int;
+
+  temp_double = ret->VIRT[i];
+  ret->VIRT[i] = ret->VIRT[j];
+  ret->VIRT[j] = temp_double;
+
+  temp_ldouble = ret->RES[i];
+  ret->RES[i] = ret->RES[j];
+  ret->RES[j] = temp_ldouble;
+
   return;
 }

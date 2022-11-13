@@ -102,10 +102,31 @@
 //https://en.wikibooks.org/wiki/Regular_Expressions/POSIX_Basic_Regular_Expressions
 //https://stackoverflow.com/questions/336210/regular-expression-for-alphanumeric-and-underscores
 
+//
 #define ORDERBY_PID_C 0
 #define ORDERBY_PID_D 1
+#define CHECK_ORDERBY_PID_C (ret->ordering_method == ORDERBY_PID_C)
+#define CHECK_ORDERBY_PID_D (ret->ordering_method == ORDERBY_PID_D)
+#define CHECK_ORDERBY_PID (ret->ordering_method == ORDERBY_PID_C || ret->ordering_method == ORDERBY_PID_D)
+
 #define ORDERBY_CMDLINE_C 2
 #define ORDERBY_CMDLINE_D 3
+#define CHECK_ORDERBY_CMDLINE_C (ret->ordering_method == ORDERBY_CMDLINE_C)
+#define CHECK_ORDERBY_CMDLINE_D (ret->ordering_method == ORDERBY_CMDLINE_D)
+#define CHECK_ORDERBY_CMDLINE (ret->ordering_method == ORDERBY_CMDLINE_C || ret->ordering_method == ORDERBY_CMDLINE_C)
+
+#define ORDERBY_RES_C 4
+#define ORDERBY_RES_D 5
+#define CHECK_ORDERBY_RES_C (ret->ordering_method == ORDERBY_RES_C)
+#define CHECK_ORDERBY_RES_D (ret->ordering_method == ORDERBY_RES_D)
+#define CHECK_ORDERBY_RES (ret->ordering_method == ORDERBY_RES_C || ret->ordering_method == ORDERBY_RES_D)
+
+#define ORDERBY_VIRT_C 6
+#define ORDERBY_VIRT_D 7
+#define CHECK_ORDERBY_VIRT_C (ret->ordering_method == ORDERBY_VIRT_C)
+#define CHECK_ORDERBY_VIRT_D (ret->ordering_method == ORDERBY_VIRT_D)
+#define CHECK_ORDERBY_VIRT (ret->ordering_method == ORDERBY_VIRT_C || ret->ordering_method == ORDERBY_VIRT_D)
+
 //etc
 
 //struct
@@ -195,6 +216,7 @@ void get_info_of_processes(pid_order_t *ret);
 void string_sort(pid_order_t *ret);
 void array_reverse_custom(pid_order_t *ret);
 void qsort_custom(pid_order_t *ret);
+void swap_custom(pid_order_t* ret, int i, int j);
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C
