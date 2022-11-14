@@ -985,13 +985,6 @@ void pid_order(pid_order_t *ret, int orderby){
 
   if(ret == NULL)return;
   
-  //temporaneo test
-  //orderby = ORDERBY_RES_C;
-  //orderby = ORDERBY_RES_D;
-  //orderby = ORDERBY_VIRT_C;
-  //orderby = ORDERBY_VIRT_D;
-  orderby = ORDERBY_CMDLINE_C;
-
   ret->ordering_method = orderby;
   int cnp = current_number_of_processes();
   //ret->num_proc = cnp; //lo imposto a get_info
@@ -1016,7 +1009,7 @@ void pid_order(pid_order_t *ret, int orderby){
 }
 
 void array_reverse_custom(pid_order_t *ret){
-
+  //aggiungere campi di swap
   int temp_int;
   char temp_str[CMD_LINE_LENGHT];
   int size_of_array = ret->num_proc;
@@ -1223,6 +1216,8 @@ void qsort_custom(pid_order_t *ret){
 
   //strcasecmp vs strcmp (casesens diff)
 
+  //l'unica cosa la quicksort non è stabile, quindi a parità di metrica non è garantito l'ordine di pid
+
   int l = 0, h = ret->num_proc-1;
   int p, i, j;
 
@@ -1266,6 +1261,18 @@ void qsort_custom(pid_order_t *ret){
         i++;
         swap_custom(ret, i, j);
       }else if (CHECK_ORDERBY_CMDLINE_D && strcasecmp(ret->cmdline[j], ret->cmdline[h]) > 0){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_CPUP_C && ret->cpu_percentage[j] < ret->cpu_percentage[h]){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_CPUP_D && ret->cpu_percentage[j] > ret->cpu_percentage[h]){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_MEMP_C && ret->mem_percentage[j] < ret->mem_percentage[h]){
+        i++;
+        swap_custom(ret, i, j);
+      }else if (CHECK_ORDERBY_MEMP_D && ret->mem_percentage[j] > ret->mem_percentage[h]){
         i++;
         swap_custom(ret, i, j);
       }
