@@ -709,8 +709,11 @@ void TUI_orderby_interface(){
     get_input = getch();
 
     if (get_input == '\n'|| get_input == 'b' || get_input == 'B'){
-      //window_input[0] = 'b';
-      break;
+      if(j == 2 && get_input == '\n') break;
+
+      memset(window_input, 0, WINDOW_INPUT_LENGHT); // leak dati?
+      return;
+      
     }
 
     if (get_input == (char)KEY_BACKSPACE || get_input == (char)127 ||get_input == (char)8 || get_input == (char)'\b'){
@@ -1203,7 +1206,7 @@ void refresh_UI(){
           mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
           mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
           mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
-          mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
+          mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline (2)RES (3)VIRT (4)CPU% (5)MEM%", '\0');
           mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
           cc1 = 0;
         }
@@ -1218,7 +1221,7 @@ void refresh_UI(){
         mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
         mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
         mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
-        mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
+        mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline (2)RES (3)VIRT (4)CPU% (5)MEM%", '\0');
         mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
       }
     }

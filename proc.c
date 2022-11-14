@@ -367,7 +367,8 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
   int max_y = getmaxy(window);
 
   if(calling_function == PRINT_PROC){
-    mvwprintw(window, 1, 2, "%s %c", "| PID | pid_path | cmdline |", '\0'); 
+    mvwprintw(window, 1, 2, "%-6s  %-15s  %-20s %c", "PID"," PID_PATH", "CMDLINE", '\0');
+    //mvwprintw(window, 1, 2, "%s %c", "| PID | pid_path | cmdline |", '\0'); 
     //https://stackoverflow.com/questions/23924497/how-to-fix-gcc-wall-embedded-0-in-format-warning
     //https://pubs.opengroup.org/onlinepubs/009695399/functions/fprintf.html
   }else{
@@ -413,8 +414,7 @@ void cumulative_print_proc(WINDOW* window, int starting_index, int starting_row,
         if(calling_function == PRINT_PROC){
 
           strtok(buffer_cmdline, SEPARATOR2); //evita altri caratteri scomodi di parametri nel cmdline ecc...(es: --no-sandbox --enable-crashpad)
-          mvwprintw(window, i, 2, "%s  %s  %s %c", proc_iter->d_name, pid_path, buffer_cmdline, '\0');
-
+          mvwprintw(window, i, 2, "%-6s  %-15s  %-20s %c", proc_iter->d_name, pid_path, buffer_cmdline, '\0');
         }else{
           
           ret_pid_stats = print_PID_stats(pid_path);
@@ -1009,10 +1009,12 @@ void pid_order(pid_order_t *ret, int orderby){
 }
 
 void array_reverse_custom(pid_order_t *ret){
-  //aggiungere campi di swap
+ 
+  int size_of_array = ret->num_proc;
   int temp_int;
   char temp_str[CMD_LINE_LENGHT];
-  int size_of_array = ret->num_proc;
+  double temp_double;
+  long double temp_ldouble;
 
   for(int i = 0; i < size_of_array/2 ; i++){
 
@@ -1024,6 +1026,21 @@ void array_reverse_custom(pid_order_t *ret){
     ret->PID[i] = ret->PID[size_of_array - i - 1];
     ret->PID[size_of_array - i - 1] = temp_int;
 
+    temp_double = ret->VIRT[i];
+    ret->VIRT[i] = ret->VIRT[size_of_array - i - 1];
+    ret->VIRT[size_of_array - i - 1] = temp_double;
+
+    temp_ldouble = ret->RES[i];
+    ret->RES[i] = ret->RES[size_of_array - i - 1];
+    ret->RES[size_of_array - i - 1] = temp_ldouble;
+
+    temp_double = ret->cpu_percentage[i];
+    ret->cpu_percentage[i] = ret->cpu_percentage[size_of_array - i - 1];
+    ret->cpu_percentage[size_of_array - i - 1] = temp_double;
+
+    temp_double = ret->mem_percentage[i];
+    ret->mem_percentage[i] = ret->mem_percentage[size_of_array - i - 1];
+    ret->mem_percentage[size_of_array - i - 1] = temp_double;
   }
 }
 
