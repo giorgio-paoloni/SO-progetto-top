@@ -65,4 +65,3 @@ void signal_handler(int sig);
 
 #define WINDOW4_Y 3
 #define WINDOW4_X 3
-

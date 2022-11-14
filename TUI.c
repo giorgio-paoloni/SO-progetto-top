@@ -22,8 +22,8 @@ int has_colors_bool = 0;
 struct sigaction signal_handler_struct, signal_handler_struct_old;
 
 int starting_row = 2, starting_process = 0;
-int find_starting_process = 0; // NB:diverso da starting_process
-int orderby_starting_process = 0; // NB:diverso da starting_process
+int find_starting_process = 0; // NB:diverso da starting_process e find_starting_process
+int orderby_starting_process = 0; // NB:diverso da starting_process e find_starting_process
 
 pid_order_t *pid_order_v;// = (pid_order_t *)pid_order_alloc();
 
@@ -753,6 +753,11 @@ void TUI_orderby_interface(){
     }
   }
 
+  window_input[5] = 'X'; 
+  //window_input viene inizializzato a fine esecuzione, e usato solo per le prime 3 celle, di cui le successive '\0' (fine stringa)
+  //sfrutto questa cosa per inizializzare una cella superiore a '\0' con un valore a caso per farmi capire in che fase sono da altre funzioni
+  //es. c1\t\0\0X
+  //es. 01 2 3 45
   if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '0'){ //C0
     mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "PID CRESCENTE", '\0');
     wrefresh(window4);
@@ -773,11 +778,43 @@ void TUI_orderby_interface(){
     wrefresh(window4);
     pid_order(pid_order_v, ORDERBY_CMDLINE_D);
     pid_order_print(pid_order_v, window3, 0);
+  }else if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '2'){//D1
+    mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "RES CRESCENTE", '\0');
+    wrefresh(window4);
+    pid_order(pid_order_v, ORDERBY_RES_C);
+    pid_order_print(pid_order_v, window3, 0);
+  }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '2'){//D1
+    mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "RES DECRESCENTE", '\0');
+    wrefresh(window4);
+    pid_order(pid_order_v, ORDERBY_RES_D);
+    pid_order_print(pid_order_v, window3, 0);
+  }else if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '3'){//D1
+    mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "VIRT CRESCENTE", '\0');
+    wrefresh(window4);
+    pid_order(pid_order_v, ORDERBY_VIRT_C);
+    pid_order_print(pid_order_v, window3, 0);
+  }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '3'){//D1
+    mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "VIRT DECRESCENTE", '\0');
+    wrefresh(window4);
+    pid_order(pid_order_v, ORDERBY_VIRT_D);
+    pid_order_print(pid_order_v, window3, 0);
+  }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '3'){//D1
+    mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "VIRT DECRESCENTE", '\0');
+    wrefresh(window4);
+    pid_order(pid_order_v, ORDERBY_VIRT_D);
+    pid_order_print(pid_order_v, window3, 0);
+  }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '3'){//D1
+    mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "VIRT DECRESCENTE", '\0');
+    wrefresh(window4);
+    pid_order(pid_order_v, ORDERBY_VIRT_D);
+    pid_order_print(pid_order_v, window3, 0);
   }else{
     wclear(window4);
     box(window4, (int)'|', (int)'-');
     mvwprintw(window4, 1, 2, "%s %c", "METODO DI ORDINAMENTO NON PRESENTE!" , '\0');
     wrefresh(window4);
+
+    get_input = 'R'; //casuale
 
     //get_input = getch();
     while (!( get_input == '\n' || get_input == 'b' || get_input == 'B')) get_input = getch();
@@ -805,6 +842,7 @@ void TUI_orderby_interface(){
     }
 
     //pid_order(pid_order_v, ORDERBY_CMDLINE_D);
+    mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "???", '\0');
     pid_order_print(pid_order_v, window3, orderby_starting_process);
 
     get_input = getch();
@@ -977,6 +1015,7 @@ void resize_term_custom(){
     wrefresh(window4);
 
   }else if(current_if == ORDERBY_IF){
+    
 
     wresize(window1, WINDOW1_Y, max_x);
     box(window1, (int)'|', (int)'-');
@@ -989,7 +1028,7 @@ void resize_term_custom(){
     
     wresize(window4, WINDOW4_Y, max_x);
     box(window4, (int)'|', (int)'-');
-
+  
     if(window_input[0] == '\0'){
       mvwprintw(window4, 1, 2, "%s %c", "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)", '\0');
       mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
@@ -998,10 +1037,37 @@ void resize_term_custom(){
       mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
       mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
     }else{
-      if (window_input[0] != '\0' && window_input[1] != '\0'&& window_input[2] == '\n'){
-        mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "???", '\0');
-        pid_order(pid_order_v, pid_order_v->ordering_method);
-        pid_order_print(pid_order_v, window3, 0);
+      if (window_input[5] == 'X'){
+
+        int cc1 = 1;
+
+        if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '0'){ //C0
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "PID CRESCENTE", '\0');
+        }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '0'){//D0
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "PID DECRESCENTE", '\0');
+        }else if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '1'){//C1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "CMDLINE CRESCENTE", '\0');
+        }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '1'){//D1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "CMDLINE DECRESCENTE", '\0');
+        }else if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '2'){//D1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "RES CRESCENTE", '\0');
+        }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '2'){//D1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "RES DECRESCENTE", '\0');
+        }else{
+          mvwprintw(window4, 1, 2, "%s %c", "METODO DI ORDINAMENTO NON PRESENTE!" , '\0');
+          mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
+          mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
+          mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
+          mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
+          mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
+          cc1 = 0;
+        }
+
+        if(cc1){
+          pid_order(pid_order_v, pid_order_v->ordering_method);
+          pid_order_print(pid_order_v, window3, 0);
+        }
+
       }else{
         mvwprintw(window4, 1, 2, "Ordina per: %s %c", window_input, '\0');
         mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
@@ -1061,7 +1127,7 @@ void refresh_UI(){
     wrefresh(window4);
 
   }else if(current_if == ORDERBY_IF){
-    
+
     box(window1, (int)'|', (int)'-');
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     wrefresh(window1);
@@ -1072,7 +1138,7 @@ void refresh_UI(){
 
     wclear(window4);
     box(window4, (int)'|', (int)'-');
-    
+
     if(window_input[0] == '\0'){
       mvwprintw(window4, 1, 2, "%s %c", "Ordina per: (Inserisci il tipo di ordinamento, invio per confermare)", '\0');
       mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
@@ -1081,10 +1147,37 @@ void refresh_UI(){
       mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
       mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
     }else{
-      if (window_input[0] != '\0' && window_input[1] != '\0'&& window_input[2] == '\n'){
-        mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "???", '\0');
-        pid_order(pid_order_v, pid_order_v->ordering_method);
-        pid_order_print(pid_order_v, window3, 0);
+      if (window_input[5] == 'X'){
+
+        int cc1 = 1;
+
+        if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '0'){ //C0
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "PID CRESCENTE", '\0');
+        }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '0'){//D0
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "PID DECRESCENTE", '\0');
+        }else if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '1'){//C1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "CMDLINE CRESCENTE", '\0');
+        }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '1'){//D1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "CMDLINE DECRESCENTE", '\0');
+        }else if( (window_input[0] == 'c' || window_input[0] == 'C') && window_input[1] == '2'){//D1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "RES CRESCENTE", '\0');
+        }else if( (window_input[0] == 'd' || window_input[0] == 'D') && window_input[1] == '2'){//D1
+          mvwprintw(window4, 1, 2, "Ordina per: %s (%s) %c", window_input, "RES DECRESCENTE", '\0');
+        }else{
+          mvwprintw(window4, 1, 2, "%s %c", "METODO DI ORDINAMENTO NON PRESENTE!" , '\0');
+          mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
+          mvwprintw(window3, 3, 2, "%s %c", "Sintassi: <ORDINE><CAMPO> ", '\0');
+          mvwprintw(window3, 4, 2, "%s %c", "<ORDINE>: (c)crescente (d)decrescente", '\0');
+          mvwprintw(window3, 5, 2, "%s %c", "<CAMPO>: (0)PID (1)cmdline", '\0');
+          mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
+          cc1 = 0;
+        }
+
+        if(cc1){
+          pid_order(pid_order_v, pid_order_v->ordering_method);
+          pid_order_print(pid_order_v, window3, 0);
+        }
+
       }else{
         mvwprintw(window4, 1, 2, "Ordina per: %s %c", window_input, '\0');
         mvwprintw(window3, 1, 2, "%s %c", "Attesa inserimento metodo di ordinamento... (invio per confermare)", '\0');
@@ -1097,8 +1190,9 @@ void refresh_UI(){
 
     wrefresh(window3);
     wrefresh(window4);
-  }else{ }
+  
 
+  }
   return;
 }
 

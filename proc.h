@@ -127,6 +127,19 @@
 #define CHECK_ORDERBY_VIRT_D (ret->ordering_method == ORDERBY_VIRT_D)
 #define CHECK_ORDERBY_VIRT (ret->ordering_method == ORDERBY_VIRT_C || ret->ordering_method == ORDERBY_VIRT_D)
 
+#define ORDERBY_CPUP_C 8
+#define ORDERBY_CPUP_D 9
+#define CHECK_ORDERBY_CPUP_C (ret->ordering_method == ORDERBY_CPUP_C)
+#define CHECK_ORDERBY_CPUP_D (ret->ordering_method == ORDERBY_CPUP_D)
+#define CHECK_ORDERBY_CPUP (ret->ordering_method == ORDERBY_CPUP_C || ret->ordering_method == ORDERBY_CPUP_D)
+
+#define ORDERBY_MEMP_C 10
+#define ORDERBY_MEMP_D 11
+#define CHECK_ORDERBY_MEMP_C (ret->ordering_method == ORDERBY_MEMP_C)
+#define CHECK_ORDERBY_MEMP_D (ret->ordering_method == ORDERBY_MEMP_D)
+#define CHECK_ORDERBY_MEMP (ret->ordering_method == ORDERBY_MEMP_C || ret->ordering_method == ORDERBY_MEMP_D)
+
+
 //etc
 
 //struct
@@ -171,6 +184,8 @@ typedef struct pid_order_t{
     
     long double *RES;
     double* VIRT;
+    double *cpu_percentage;
+    double *mem_percentage;
 
     //double* cpu_percentage_used_time_sec;
     //double* used_physical_memory_percentage;
@@ -213,7 +228,6 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index);
 void pid_order_free(pid_order_t* ret);
 void pid_order_resize(pid_order_t *ret, int new_number_of_processes);
 void get_info_of_processes(pid_order_t *ret);
-void string_sort(pid_order_t *ret);
 void array_reverse_custom(pid_order_t *ret);
 void qsort_custom(pid_order_t *ret);
 void swap_custom(pid_order_t* ret, int i, int j);

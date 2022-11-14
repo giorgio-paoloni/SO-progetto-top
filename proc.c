@@ -874,6 +874,8 @@ void* pid_order_alloc(){
   ret->cmdline = NULL;
   ret->RES = NULL;
   ret->VIRT = NULL;
+  ret->cpu_percentage = NULL;
+  ret->mem_percentage = NULL;
   //...
 
   pid_order(ret, ORDERBY_PID_C);
@@ -885,7 +887,7 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
   int i = starting_index, j = 0; // salto diversi incrementi inutili
   //i indica la cella dell'array da cui stampare, j la riga della finestra in cui stampare
   int local_max_y = getmaxy(window);
-  local_max_y -= 2; //questione di grafica
+  local_max_y -= 4; //questione di grafica
   int length;
   
   char l_buf[RET_LENGHT]; //ok
@@ -894,7 +896,9 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
   wclear(window);
   box(window, (int)'|', (int)'-');
 
-  while( i < ret->num_proc && j < local_max_y  ){
+  mvwprintw(window, 1, 2, "%-8s %-30s %11s %10s %7s %7s %c", "PID", "CMDLINE", "RES", "VIRT", "CPU%", "MEM%", '\0');
+
+  while( i < ret->num_proc && j < local_max_y ){
     length = 0;
     //Lf controlla
     if (ret->RES[i] < KB_SIZE){
@@ -917,14 +921,8 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
       length += snprintf(l_buf + length, RET_LENGHT - length, "  %8.2fG%c", ((double)ret->VIRT[i]) / ((double)GB_SIZE), '\0');
     }
 
-    mvwprintw(window, 1 + j, 2, "PID: %8d %-30s %s %c", ret->PID[i], ret->cmdline[i], l_buf, '\0');
-    /*if(ret->ordering_method == ORDERBY_PID_C || ret->ordering_method == ORDERBY_PID_D ||ret->ordering_method == ORDERBY_CMDLINE_C || ret->ordering_method == ORDERBY_CMDLINE_D ){
-      //mvwprintw(window, 1 + j, 2, "PID: %d %s %c", ret->PID[i], ret->cmdline[i], '\0');
-      mvwprintw(window, 1 + j, 2, "PID: %8d %-32s %s %c", ret->PID[i], ret->cmdline[i], l_buf, '\0');
-    }else{
-      mvwprintw(window, 1 + j, 2, "PID: %8d %-32s %s %c", ret->PID[i], ret->cmdline[i], l_buf, '\0');
-    }*/
-      
+    mvwprintw(window, 3 + j, 2, "%-8d %-30s %s %6.2f%% %6.2f%% %c", ret->PID[i], ret->cmdline[i], l_buf, ret->cpu_percentage[i], ret->mem_percentage[i], '\0');
+
     i++;
     j++;
   }
@@ -943,6 +941,8 @@ void pid_order_free(pid_order_t* ret){
   free(ret->cmdline);
   free(ret->RES);
   free(ret->VIRT);
+  free(ret->cpu_percentage);
+  free(ret->mem_percentage);
   free(ret);
 
   return;
@@ -967,6 +967,8 @@ void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
   ret->cmdline = (char**) realloc(ret->cmdline, new_max_size * sizeof(char*));
   ret->RES = (long double *)realloc(ret->RES, new_max_size * sizeof(long double));
   ret->VIRT = (double *)realloc(ret->VIRT, new_max_size * sizeof(double));
+  ret->cpu_percentage = (double *)realloc(ret->cpu_percentage, new_max_size * sizeof(double));
+  ret->mem_percentage = (double *)realloc(ret->mem_percentage, new_max_size * sizeof(double));
 
   for(int i = 0; i < new_max_size; i++){
     //ret->cmdline[i] = (char*) realloc(ret->cmdline[i], CMD_LINE_LENGHT * sizeof(char));
@@ -992,7 +994,7 @@ void pid_order(pid_order_t *ret, int orderby){
 
   ret->ordering_method = orderby;
   int cnp = current_number_of_processes();
-  ret->num_proc = cnp;
+  //ret->num_proc = cnp; //lo imposto a get_info
 
   //resize se troppo piccolo o troppo grande...
   if(ret->max_size <= cnp) pid_order_resize(ret, cnp);
@@ -1001,146 +1003,15 @@ void pid_order(pid_order_t *ret, int orderby){
   get_info_of_processes(ret);
 
   if(orderby == ORDERBY_PID_C){
-    //già ordinati dal kernel per PID
     return;
   }else if(orderby == ORDERBY_PID_D){
     array_reverse_custom(ret);
     return;
-  }else if(orderby == ORDERBY_CMDLINE_C || orderby == ORDERBY_CMDLINE_D){
-    qsort_custom(ret);
-    //string_sort(ret);
-    return;
-  }else if(CHECK_ORDERBY_RES || CHECK_ORDERBY_VIRT){
+  }else{
     qsort_custom(ret);
     return;
   }
   
-  return;
-}
-
-void get_info_of_processes2(pid_order_t *ret){
-
-  if(ret == NULL) return;
-  
-  DIR* proc_dir;
-  if((proc_dir = opendir(PROC_PATH)) == NULL) return;
-
-  int i = 0, q = 0, check = 1;
-
-  dirent* proc_iter;
-  FILE* file_cmdline;
-
-  char pid_cmdline[PID_CMDLINE_LENGHT];
-  char buffer_cmdline[BUFFER_CMDLINE_LENGHT];
-
-  char *token = NULL;
-  char *prev_token = NULL;
-
-  while( i < ret->num_proc && (proc_iter = readdir(proc_dir)) != NULL){
-
-    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
-    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
-
-    if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
-
-      strcpy(pid_cmdline, PROC_PATH);
-      strcat(pid_cmdline, "/");
-      strcat(pid_cmdline, proc_iter->d_name);
-      strcat(pid_cmdline, "/");
-      strcat(pid_cmdline, "cmdline");
-      strcat(pid_cmdline, "\0");
-
-      file_cmdline = fopen(pid_cmdline, "r");
-
-      if(file_cmdline == NULL){
-        //memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
-        continue;
-      }
-
-      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
-
-      fclose(file_cmdline);
-
-      if(strcmp(buffer_cmdline,"\0") == 0) continue;
-
-      ret->PID[i] = atoi(proc_iter->d_name);
-
-      //pulisco cmdline da caratteri "sporchi" che impedirebbero un corretto ordinamento corretto
-      //da sistemare...
-      token = strtok(buffer_cmdline, SEPARATOR3);
-      check = 1;
-      
-      while(check && token != NULL){
-        q = 0;
-
-        while(token[q]){
-          // ci sono dei cmdline veramente strani es: /../../spotify --params/120120a 90 spot/
-          //questo evita di tokenizzare i token se ci sono / oltre la cmdline di interesse
-          if(token[q] == ' ') check = 0;
-          q++;
-        }
-
-        prev_token = token;
-        token = strtok(NULL, SEPARATOR3);
-        //rimuovo gli spazi dal token
-      }
-
-      token = strtok(prev_token, SEPARATOR4);
-
-      if (strcpy(ret->cmdline[i], token) == NULL) return;
-
-      i++;
-    }
-  }
-
-  //potrebbero essere stati terminati alcuni nel mentre
-  ret->num_proc = i; //test
-
-  closedir(proc_dir);
-  return;
-}
-
-void string_sort(pid_order_t *ret){
-  //PER ORA USO UN SEMPLICE BUBBLE-SORT: O(n^2)
-  //credits. https://pencilprogrammer.com/c-programs/sort-names-in-alphabetical-order/
-  //preso e modificato
-
-  char temp_str[CMD_LINE_LENGHT];
-  int temp_int;
-
-  int size_of_array = ret->num_proc;
-
-  for(int i=0; i < size_of_array; i++){
-    for(int j=0; j < size_of_array-1-i; j++){
-
-      
-      if( ret->ordering_method == ORDERBY_CMDLINE_C && strcmp(ret->cmdline[j], ret->cmdline[j+1]) > 0 ){
-        //swap array[j] and array[j+1]
-
-        strncpy(temp_str, ret->cmdline[j], CMD_LINE_LENGHT);
-        strncpy(ret->cmdline[j], ret->cmdline[j+1], CMD_LINE_LENGHT);
-        strncpy(ret->cmdline[j+1], temp_str, CMD_LINE_LENGHT);
-
-        temp_int = ret->PID[j];
-        ret->PID[j] = ret->PID[j+1];
-        ret->PID[j+1] = temp_int;
-
-      }else if( ret->ordering_method == ORDERBY_CMDLINE_D && strcmp(ret->cmdline[j], ret->cmdline[j+1]) < 0 ){
-        
-        strncpy(temp_str, ret->cmdline[j+1], CMD_LINE_LENGHT);
-        strncpy(ret->cmdline[j+1], ret->cmdline[j], CMD_LINE_LENGHT);
-        strncpy(ret->cmdline[j], temp_str, CMD_LINE_LENGHT);
-
-        temp_int = ret->PID[j+1];
-        ret->PID[j+1] = ret->PID[j];
-        ret->PID[j] = temp_int;
-
-      }
-    }
-  }
-
-
-
   return;
 }
 
@@ -1214,7 +1085,8 @@ void get_info_of_processes(pid_order_t *ret){
   if(page_size == -1){
     page_size = sysconf(_SC_PAGESIZE)/1024; //mostrata in KB
   }
-
+  
+  ret->num_proc = current_number_of_processes();
 
   while( i < ret->num_proc && (proc_iter = readdir(proc_dir)) != NULL){
 
@@ -1309,6 +1181,8 @@ void get_info_of_processes(pid_order_t *ret){
         j++;
       }
 
+      used_physical_memory_percentage = ((double)used_physical_memory * 100) / (double)total_physical_memory;
+
       if (frequency == 0) return; // err, divisione per 0
 
       user_time_sec = (double)user_time_clock / (double)frequency;
@@ -1325,13 +1199,15 @@ void get_info_of_processes(pid_order_t *ret){
 
       ret->RES[i] = (long double) used_physical_memory;//((double)used_physical_memory) / ((double)MB_SIZE);
       ret->VIRT[i] = (double) vm_size ;// ((double)vm_size) / ((double)MB_SIZE);
+      ret->cpu_percentage[i] = cpu_percentage_used_time_sec;
+      ret->mem_percentage[i] = used_physical_memory_percentage;
 
       i++;
     }
   }
 
   // potrebbero essere stati terminati alcuni nel mentre
-  //ret->num_proc = i; // test
+  ret->num_proc = i; // test
   closedir(proc_dir);
   return;
 }
@@ -1345,12 +1221,11 @@ void qsort_custom(pid_order_t *ret){
   strncpy(try, ret->cmdline[ret->num_proc], CMD_LINE_LENGHT);
   return;*/
 
+  //strcasecmp vs strcmp (casesens diff)
+
   int l = 0, h = ret->num_proc-1;
   int p, i, j;
-  long double x;
 
-  //char* x_str = NULL;
-  char x_str[CMD_LINE_LENGHT];
   //strncpy(x_str, ret->cmdline[h], CMD_LINE_LENGHT);
   //return;
 
@@ -1370,18 +1245,7 @@ void qsort_custom(pid_order_t *ret){
 
     // Set pivot element at its correct position
     // in sorted array
-
-  //start partition
-
-    /*if (CHECK_ORDERBY_RES){
-      x = ret->RES[h];
-    }else if(CHECK_ORDERBY_CMDLINE){
-      //x_str = ret->cmdline[h];
-      //strncpy(x_str, ret->cmdline[h], CMD_LINE_LENGHT); //segv,?? con h, con l va
-    }else{
-      x = ret->VIRT[h];
-    }*/
-
+    
     i = (l - 1);
 
     for (j = l; j < h; j++){
@@ -1398,10 +1262,10 @@ void qsort_custom(pid_order_t *ret){
       }else if (CHECK_ORDERBY_VIRT_D && ret->VIRT[j] > ret->VIRT[h]){
         i++;
         swap_custom(ret, i, j);
-      }else if (CHECK_ORDERBY_CMDLINE_C && strcmp(ret->cmdline[j], ret->cmdline[h]) < 0){
+      }else if (CHECK_ORDERBY_CMDLINE_C && strcasecmp(ret->cmdline[j], ret->cmdline[h]) < 0){
         i++;
         swap_custom(ret, i, j);
-      }else if (CHECK_ORDERBY_CMDLINE_D && strcmp(ret->cmdline[j], ret->cmdline[h]) > 0){
+      }else if (CHECK_ORDERBY_CMDLINE_D && strcasecmp(ret->cmdline[j], ret->cmdline[h]) > 0){
         i++;
         swap_custom(ret, i, j);
       }
@@ -1457,6 +1321,14 @@ void swap_custom(pid_order_t* ret, int i, int j){
   temp_ldouble = ret->RES[i];
   ret->RES[i] = ret->RES[j];
   ret->RES[j] = temp_ldouble;
+
+  temp_double = ret->cpu_percentage[i];
+  ret->cpu_percentage[i] = ret->cpu_percentage[j];
+  ret->cpu_percentage[j] = temp_double;
+
+  temp_double = ret->mem_percentage[i];
+  ret->mem_percentage[i] = ret->mem_percentage[j];
+  ret->mem_percentage[j] = temp_double;
 
   return;
 }
