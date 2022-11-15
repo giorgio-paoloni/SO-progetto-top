@@ -866,17 +866,17 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
 }
 
 void* pid_order_alloc(){
-  //primo nodo (-1)
+
   pid_order_t* ret = (pid_order_t *)malloc(sizeof(pid_order_t));
   ret->ordering_method = ORDERBY_PID_C;
   ret->num_proc = -1;
+  ret->max_size = -1;
   ret->PID = NULL;
   ret->cmdline = NULL;
   ret->RES = NULL;
   ret->VIRT = NULL;
   ret->cpu_percentage = NULL;
   ret->mem_percentage = NULL;
-  //...
 
   pid_order(ret, ORDERBY_PID_C);
   return (void*) ret;
@@ -891,7 +891,6 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
   int length;
   
   char l_buf[RET_LENGHT]; //ok
-
 
   wclear(window);
   box(window, (int)'|', (int)'-');
@@ -972,7 +971,7 @@ void pid_order_resize(pid_order_t* ret, int new_number_of_processes){
 
   for(int i = 0; i < new_max_size; i++){
     //ret->cmdline[i] = (char*) realloc(ret->cmdline[i], CMD_LINE_LENGHT * sizeof(char));
-    ret->cmdline[i] = (char*) malloc( CMD_LINE_LENGHT * sizeof(char));
+    ret->cmdline[i] = (char *)malloc( CMD_LINE_LENGHT * sizeof(char));
   }
 
   ret->max_size = new_max_size;
@@ -1065,6 +1064,7 @@ void get_info_of_processes(pid_order_t *ret){
 
   char *token = NULL;
   char *prev_token = NULL;
+  char token_temp[CMD_LINE_LENGHT];
 
   //CPU
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc, frequenza variabile?
@@ -1104,6 +1104,7 @@ void get_info_of_processes(pid_order_t *ret){
     memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
     memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
     memset(pid_stat, 0, PID_STAT_LENGHT);
+    memset(token_temp, 0, CMD_LINE_LENGHT);
 
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
@@ -1165,10 +1166,12 @@ void get_info_of_processes(pid_order_t *ret){
       }
 
       token = strtok(prev_token, SEPARATOR4);
+      //https://linux.die.net/man/3/snprintf
+      //in caso di overlap dest-source non è ben definito
+      snprintf(token_temp, CMD_LINE_LENGHT, "%s", token);
 
-      if (strcpy(ret->cmdline[i], token) == NULL) return;
+      if(snprintf(ret->cmdline[i], CMD_LINE_LENGHT, "%s", token_temp) == 0) return;
 
-      
       //ora ottengo i valori da /proc/[pid]/stat
       j = 1; //FORSE = 1?, controlla
       token = strtok(buffer_stat, SEPARATOR1);
@@ -1324,6 +1327,8 @@ void swap_custom(pid_order_t* ret, int i, int j){
   //check overflow
   if(i < 0 || i >= ret->num_proc) return;
   if(j < 0 || j >= ret->num_proc) return;
+  //no swap
+  if(i == j) return;
 
   char temp_str[CMD_LINE_LENGHT];
   int temp_int;

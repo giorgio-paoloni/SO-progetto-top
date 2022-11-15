@@ -40,7 +40,7 @@
 #define BUFFER_STAT_LENGHT 256
 #define BUFFER_STATM_LENGHT 256
 #define RET_LENGHT 256
-#define CMD_LINE_LENGHT 7
+#define CMD_LINE_LENGHT 32
 #define REFRESH_RATE 1
 //
 #define PROC_STAT_PATH "/proc/stat"
