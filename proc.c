@@ -778,14 +778,14 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 
       if(file_cmdline == NULL) continue;
 
-      fread(&buffer_cmdline, sizeof(char), BUFFER_CMDLINE_LENGHT, file_cmdline);
+      fgets(buffer_cmdline, BUFFER_CMDLINE_LENGHT, file_cmdline);
       fclose(file_cmdline);
       
       if(strcmp(buffer_cmdline,"\0") == 0) continue; //cmdline vuoto, pid di un processo senza cmdline
 
       if(j >= starting_index){
 
-        if(regexec(&regex_var, buffer_cmdline,  0, NULL, 0) == 0){//match con la regex (per nome)
+        if(regexec(&regex_var, buffer_cmdline, 0, NULL, 0) == 0){//match con la regex (per nome)
           
           mvwprintw(window, i, 2, "%s %s %c", proc_iter->d_name, buffer_cmdline, '\0');
           wrefresh(window);
@@ -991,6 +991,10 @@ void pid_order(pid_order_t *ret, int orderby){
   //resize se troppo piccolo o troppo grande...
   if(ret->max_size <= cnp) pid_order_resize(ret, cnp);
   //if(ret->max_size >= cnp*4 ) pid_order_resize(ret, cnp);
+  //per ora è disabilitata perché non riesco a testarla sufficientemente visto che è difficile che in un istante i processi cambino così
+  //velocemente a numero, in genere il numero dei processi a runtime si aggira attorno una media che è cnp calcolato la prima volta
+  //comunque l'array è grande 2x cnp, quindi significa che si molte celle sono sprecate e che aumentando il numero dei processi
+  //l'array diventa non indifferente, però non viene costantemente ridimensionato
 
   get_info_of_processes(ret);
 
@@ -1064,7 +1068,6 @@ void get_info_of_processes(pid_order_t *ret){
 
   char *token = NULL;
   char *prev_token = NULL;
-  char token_temp[CMD_LINE_LENGHT];
 
   //CPU
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc, frequenza variabile?
@@ -1104,7 +1107,6 @@ void get_info_of_processes(pid_order_t *ret){
     memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
     memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
     memset(pid_stat, 0, PID_STAT_LENGHT);
-    memset(token_temp, 0, CMD_LINE_LENGHT);
 
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
 
@@ -1166,11 +1168,8 @@ void get_info_of_processes(pid_order_t *ret){
       }
 
       token = strtok(prev_token, SEPARATOR4);
-      //https://linux.die.net/man/3/snprintf
-      //in caso di overlap dest-source non è ben definito
-      snprintf(token_temp, CMD_LINE_LENGHT, "%s", token);
 
-      if(snprintf(ret->cmdline[i], CMD_LINE_LENGHT, "%s", token_temp) == 0) return;
+      if(snprintf(ret->cmdline[i], CMD_LINE_LENGHT, "%s", token) == 0) return;
 
       //ora ottengo i valori da /proc/[pid]/stat
       j = 1; //FORSE = 1?, controlla
