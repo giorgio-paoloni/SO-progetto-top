@@ -1,8 +1,8 @@
 #include "bot.h"
 
 int main(){
+
   TUI_default_interface();
-  //exit_curses(0);
   return 0;
 }
 
@@ -10,3 +10,5 @@ int main(){
 
 // https://invisible-island.net/ncurses/ncurses.faq.html#config_leaks
 //(possibili) memleak di ncurses sono spiegati qui, Testing for Memory Leaks
+//https://stackoverflow.com/questions/3840582/still-reachable-leak-detected-by-valgrind (global var)
+//https: // stackoverflow.com/questions/2144531/valgrind-claims-there-is-unfreed-memory-is-this-bad

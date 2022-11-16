@@ -8,6 +8,9 @@
 #include <ncurses.h> //guida seguita https://tldp.org/HOWTO/NCURSES-Programming-HOWTO/, curses o ncurses lib
 //TUI = text-based user interface, sfrutto le potenzialita' di ncurses
 
+//funzioni ncurses -Wimplicit-function-declaration
+void _nc_free_and_exit();
+
 //base
 void TUI_default_interface();
 void TUI_kill_interface();

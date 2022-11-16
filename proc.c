@@ -644,6 +644,8 @@ void* cpu_snapshot_alloc(int time){
 
 void cpu_snapshot_free(cpu_snapshot_t* struct_ptr){
 
+  if(struct_ptr == NULL) return; //non succede, ma per sicurezza va messo
+
   free(struct_ptr->total_time_sec);
   free(struct_ptr->user_time_sec);
   free(struct_ptr->superuser_time_sec);
@@ -654,8 +656,19 @@ void cpu_snapshot_free(cpu_snapshot_t* struct_ptr){
   free(struct_ptr->steal_time_sec);
   free(struct_ptr->guest_time_sec);
   free(struct_ptr->guest_nice_time_sec);
+  struct_ptr->total_time_sec = NULL;
+  struct_ptr->user_time_sec = NULL;
+  struct_ptr->superuser_time_sec = NULL;
+  struct_ptr->idle_time_sec = NULL;
+  struct_ptr->iowait_time_sec = NULL;
+  struct_ptr->irq_time_sec = NULL;
+  struct_ptr->softirq_time_sec = NULL;
+  struct_ptr->steal_time_sec = NULL;
+  struct_ptr->guest_time_sec = NULL;
+  struct_ptr->guest_nice_time_sec = NULL;
 
   free(struct_ptr);
+  struct_ptr = NULL;
 
   return;
 }
@@ -665,7 +678,7 @@ void* cpu_usage_alloc(){
   cpu_usage_t *ret = (cpu_usage_t*) malloc(sizeof(cpu_usage_t));
 
   //equival calloc
-
+  
   ret->idle_time_diff_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
   ret->total_time_diff_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
   ret->cpu_percentage = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
@@ -678,12 +691,19 @@ void* cpu_usage_alloc(){
 }
 
 void cpu_usage_free(cpu_usage_t* struct_ptr){
+  if(struct_ptr == NULL) return;
+
+  //memset(struct_ptr, 0, sizeof(cpu_usage_t));
 
   free(struct_ptr->idle_time_diff_sec);
   free(struct_ptr->total_time_diff_sec);
   free(struct_ptr->cpu_percentage);
-  
+  struct_ptr->idle_time_diff_sec = NULL;
+  struct_ptr->total_time_diff_sec = NULL;
+  struct_ptr->cpu_percentage = NULL;
+
   free(struct_ptr);
+  struct_ptr = NULL;
 
   return;
 }
@@ -932,8 +952,11 @@ void pid_order_print(pid_order_t *ret, WINDOW *window, int starting_index){
 
 void pid_order_free(pid_order_t* ret){
 
+  if(ret == NULL) return;
+
   for (int i = 0; i < ret->max_size; i++){
     free(ret->cmdline[i]);
+    ret->cmdline[i] = NULL;
   }
 
   free(ret->PID);
@@ -942,7 +965,15 @@ void pid_order_free(pid_order_t* ret){
   free(ret->VIRT);
   free(ret->cpu_percentage);
   free(ret->mem_percentage);
+  ret->PID = NULL;
+  ret->cmdline = NULL;
+  ret->RES = NULL;
+  ret->VIRT = NULL;
+  ret->cpu_percentage = NULL;
+  ret->mem_percentage = NULL;
+
   free(ret);
+  ret = NULL;
 
   return;
 }
@@ -1103,12 +1134,12 @@ void get_info_of_processes(pid_order_t *ret){
 
   while( i < ret->num_proc && (proc_iter = readdir(proc_dir)) != NULL){
 
-    memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
-    memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
-    memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
-    memset(pid_stat, 0, PID_STAT_LENGHT);
-
     if(is_pid(proc_iter->d_name) && proc_iter->d_type == DT_DIR){
+
+      memset(buffer_cmdline, 0, BUFFER_CMDLINE_LENGHT);
+      memset(pid_cmdline, 0, PID_CMDLINE_LENGHT);
+      memset(buffer_stat, 0, BUFFER_STAT_LENGHT);
+      memset(pid_stat, 0, PID_STAT_LENGHT);
 
       strcpy(pid_cmdline, PROC_PATH);
       strcat(pid_cmdline, "/");
@@ -1141,39 +1172,14 @@ void get_info_of_processes(pid_order_t *ret){
       }
 
       //entrambi i file "letti"
-
       fclose(file_cmdline);
       fclose(file_stat);
 
       ret->PID[i] = atoi(proc_iter->d_name);
 
-      //pulisco cmdline da caratteri "sporchi" che impedirebbero un corretto ordinamento corretto
-      //da sistemare...
       parse_cmdline(ret->cmdline[i], buffer_cmdline, CMD_LINE_LENGHT);
-      /*token = strtok(buffer_cmdline, SEPARATOR3);
-      check = 1;
-      
-      while(check && token != NULL){
-        q = 0;
 
-        while(token[q]){
-          // ci sono dei cmdline veramente strani es: /../../spotify --params/120120a 90 spot/
-          //questo evita di tokenizzare i token se ci sono / oltre la cmdline di interesse
-          if(token[q] == ' ') check = 0;
-          q++;
-        }
-
-        prev_token = token;
-        token = strtok(NULL, SEPARATOR3);
-        //rimuovo gli spazi dal token
-      }
-
-      token = strtok(prev_token, SEPARATOR4);
-
-      if(snprintf(ret->cmdline[i], CMD_LINE_LENGHT, "%s", token) == 0) return;*/
-
-      //ora ottengo i valori da /proc/[pid]/stat
-      j = 1; //FORSE = 1?, controlla
+      j = 1; 
       token = strtok(buffer_stat, SEPARATOR1);
 
       while(token != NULL && j < MAX_TOKEN1){//strtok
@@ -1365,13 +1371,32 @@ void swap_custom(pid_order_t* ret, int i, int j){
 void parse_cmdline(char* dest, char* src, int max_s){
 
   //la cmdline in /proc/[PID]/cmdline è scritta in un formato veramente grezzo
-  //es /bin/.../.../@programma --no-flags --test 
+  //es /bin/.../.../@programma --no-flags --test
+  // es i programmi snapstore
   //questo codice, per quanto possibile cerca di renderla in un formato un po' più leggibile 
   //alcuni cmdline comunque riusciranno ad eludere il parsing
+  //cat /proc/6337/cmdline
 
   int sl = strlen(src), i = sl, j, k = 0;
   char *src_parsed;
 
+  k = 0;
+
+  //cmdline da snapstore
+  if(strncmp(src, "/snap", 5) == 0){
+    while(k < sl){
+      if(src[k] == '\t' || src[k] == ' '){
+        src[k]= '\0';
+        break;
+      }
+      k++;
+    }
+  }
+
+  sl = strlen(src);
+  i = sl;
+
+  //rendo la cmdline chiara, togliendo flags e altre info
   while(i >= 0){
     if(src[i] == '/'){
       src[i] = '\0';

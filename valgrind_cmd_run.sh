@@ -7,7 +7,7 @@
 #make clean && make && valgrind --track-origins=yes --log-file="./valgrind_output" ./bot
 
 #TEST 0.2
-make clean && make && valgrind --leak-check=yes --track-origins=yes --log-file="./valgrind_output" ./bot
+#make clean && make && valgrind --leak-check=yes --track-origins=yes --log-file="./valgrind_output" ./bot
 
 #TEST1
 #make clean && make && valgrind --leak-check=yes --show-leak-kinds=all --log-file="./valgrind_output" ./bot
@@ -17,6 +17,8 @@ make clean && make && valgrind --leak-check=yes --track-origins=yes --log-file="
 
 #TEST1.2
 #make clean && make && valgrind --leak-check=yes --log-file="./valgrind_output" ./bot
+
+make clean && make && valgrind --leak-check=yes --track-fds=all --log-file="./valgrind_output" ./bot
 
 #TEST2
 #make clean && make && valgrind --leak-check=yes --show-possibly-lost=no --show-leak-kinds=all --log-file="./valgrind_output" ./bot

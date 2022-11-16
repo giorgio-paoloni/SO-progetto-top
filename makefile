@@ -1,10 +1,12 @@
+##credits https://solver.assistedcoding.eu/makefilegen
+
 OBJS	= bot.o proc.o TUI.o process_monitor.o
 SOURCE	= bot.c proc.c TUI.c process_monitor.c
 HEADER	= bot.h proc.h TUI.h process_monitor.h
 OUT	= bot
 CC	 = gcc
 FLAGS	 = -g -c -Wall
-LFLAGS = -lpthread -lncurses #--disable-leaks
+LFLAGS = -lpthread -lncurses
 #https://stackoverflow.com/questions/16192087/undefined-reference-to-initscr-ncurses
 
 all: $(OBJS)

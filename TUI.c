@@ -11,9 +11,9 @@ sem_t sem1;
 int sem1_val;
 pthread_t t1;
 
-cpu_usage_t* cpu_usage_var = NULL;
-cpu_snapshot_t* cpu_snapshot_t0 = NULL;
-cpu_snapshot_t* cpu_snapshot_t1 = NULL;
+cpu_usage_t* cpu_usage_var; //= NULL;
+cpu_snapshot_t* cpu_snapshot_t0; // = NULL;
+cpu_snapshot_t* cpu_snapshot_t1;// = NULL;
 
 struct timespec sleep_value = {0};
 
@@ -54,9 +54,10 @@ void TUI_default_interface(){
   signal_handler_struct.sa_handler = &signal_handler;
   signal_handler_struct.sa_flags = 0;
   sigemptyset(&signal_handler_struct.sa_mask);
+  
 
-  if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) exit(EXIT_FAILURE);
-  if(sigaction(SIGWINCH, &signal_handler_struct, &signal_handler_struct_old) == -1 ) exit(EXIT_FAILURE);
+  if(sigaction(SIGALRM, &signal_handler_struct, &signal_handler_struct_old) == -1 ) return; 
+  if(sigaction(SIGWINCH, &signal_handler_struct, &signal_handler_struct_old) == -1 ) return;
 
   int char_input;
 
@@ -189,11 +190,21 @@ void TUI_default_interface(){
   endwin();//ncurses, dealloca le finestre
   clear();
 
+  // utile per memleak
+  _nc_free_and_exit();
+  // --disable-leaks, per i warning memleak di valgrind
+  // https://stackoverflow.com/questions/32410125/valgrind-shows-memory-leaks-from-ncurses-commands-after-using-appropriate-free
+  // https://invisible-island.net/ncurses/ncurses.faq.html#config_leaks (Testing for Memory Leaks)
+
   sem_destroy(&sem1);
   cpu_usage_free(cpu_usage_var);
 
   cpu_snapshot_free(cpu_snapshot_t0);
   cpu_snapshot_free(cpu_snapshot_t1);
+
+  /*cpu_usage_var = NULL;
+  cpu_snapshot_t0 = NULL;
+  cpu_snapshot_t1 = NULL;*/
 
   return;
 }
