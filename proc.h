@@ -34,6 +34,7 @@
 #define SEPARATOR3 "/"
 #define SEPARATOR4 "@()[]:\t "
 #define SEPARATOR5 "\t "
+#define SEPARATOR6 "@()[]:"
 #define MAX_TOKEN1 25
 #define MAX_TOKEN2 5
 #define MAX_TOKEN3 11
@@ -231,6 +232,7 @@ void get_info_of_processes(pid_order_t *ret);
 void array_reverse_custom(pid_order_t *ret);
 void qsort_custom(pid_order_t *ret);
 void swap_custom(pid_order_t* ret, int i, int j);
+void parse_cmdline(char* dest, char* src, int max_s);
 
 //var (extern)
 extern sem_t sem1; //dichiarata in TUI.C

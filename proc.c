@@ -1054,7 +1054,7 @@ void get_info_of_processes(pid_order_t *ret){
   DIR* proc_dir;
   if((proc_dir = opendir(PROC_PATH)) == NULL) return;
 
-  int i = 0, j = 0, q = 0, check = 1;
+  int i = 0, j = 0;//, q = 0, check = 1;
 
   dirent* proc_iter;
   FILE* file_cmdline;
@@ -1067,7 +1067,7 @@ void get_info_of_processes(pid_order_t *ret){
   char buffer_stat[BUFFER_STAT_LENGHT];
 
   char *token = NULL;
-  char *prev_token = NULL;
+  //char *prev_token = NULL;
 
   //CPU
   long int frequency = sysconf(_SC_CLK_TCK);//dal man proc, frequenza variabile?
@@ -1149,7 +1149,8 @@ void get_info_of_processes(pid_order_t *ret){
 
       //pulisco cmdline da caratteri "sporchi" che impedirebbero un corretto ordinamento corretto
       //da sistemare...
-      token = strtok(buffer_cmdline, SEPARATOR3);
+      parse_cmdline(ret->cmdline[i], buffer_cmdline, CMD_LINE_LENGHT);
+      /*token = strtok(buffer_cmdline, SEPARATOR3);
       check = 1;
       
       while(check && token != NULL){
@@ -1169,7 +1170,7 @@ void get_info_of_processes(pid_order_t *ret){
 
       token = strtok(prev_token, SEPARATOR4);
 
-      if(snprintf(ret->cmdline[i], CMD_LINE_LENGHT, "%s", token) == 0) return;
+      if(snprintf(ret->cmdline[i], CMD_LINE_LENGHT, "%s", token) == 0) return;*/
 
       //ora ottengo i valori da /proc/[pid]/stat
       j = 1; //FORSE = 1?, controlla
@@ -1358,5 +1359,55 @@ void swap_custom(pid_order_t* ret, int i, int j){
   ret->mem_percentage[i] = ret->mem_percentage[j];
   ret->mem_percentage[j] = temp_double;
 
+  return;
+}
+
+void parse_cmdline(char* dest, char* src, int max_s){
+
+  //la cmdline in /proc/[PID]/cmdline è scritta in un formato veramente grezzo
+  //es /bin/.../.../@programma --no-flags --test 
+  //questo codice, per quanto possibile cerca di renderla in un formato un po' più leggibile 
+  //alcuni cmdline comunque riusciranno ad eludere il parsing
+
+  int sl = strlen(src), i = sl, j, k = 0;
+  char *src_parsed;
+
+  while(i >= 0){
+    if(src[i] == '/'){
+      src[i] = '\0';
+      break;
+    }
+    i--;
+  }
+
+  j = i;
+
+  src_parsed = src + i + 1;
+
+  while(j < sl){
+    if(src[j] == '\t' || src[j] == ' '){
+      src[j] = '\0';
+      break;
+    }
+    j++;
+  }
+
+  k = i + 1;
+
+  while(k < j){
+    if(src[k] == '(' || src[k] == ')' || src[k] == '[' || src[k] == ']' || src[k] == '@'|| src[k] == ':'){
+      src[k] = '\0';
+    }
+    k++;
+  }
+
+  k = i + 1;
+
+  while(src[k] == '\0'){
+    src_parsed++;
+    k++;
+  }
+
+  snprintf(dest, max_s, "%s", src_parsed);
   return;
 }
