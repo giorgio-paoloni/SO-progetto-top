@@ -207,6 +207,8 @@ void TUI_default_interface(){
   cpu_snapshot_t0 = NULL;
   cpu_snapshot_t1 = NULL;*/
 
+  pid_order_free(pid_order_v);
+
   return;
 }
 
@@ -448,6 +450,9 @@ void TUI_find_interface(){
       find_process(window3, starting_process, window_input);
       continue;
     }
+    
+    //qui valgrind segnala degli "Conditional jump or move depends on uninitialised value" per number_of_regex_matches
+    //poiché il valore non è ben definito visto che dipende da cosa inserisce l'utente 
 
     if (get_input == (char) KEY_UP){
 

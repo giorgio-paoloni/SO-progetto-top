@@ -534,6 +534,7 @@ void* cpu_usage_thread_wrapper(void* arg){
   sigset_t set1;
   sigemptyset(&set1);
   sigaddset(&set1, SIGALRM);
+  sigaddset(&set1, SIGWINCH);
   pthread_sigmask(SIG_SETMASK, &set1, NULL);
 
   sem_wait(&sem1);
@@ -680,7 +681,7 @@ void* cpu_usage_alloc(){
   cpu_usage_t *ret = (cpu_usage_t*) malloc(sizeof(cpu_usage_t));
   //valgrind segnala still reachable, ma è perché ritorno il puntatore e non rileva la free, che verrà fatta a terminazione del programma
   //non è un memleak, è un warning
-  
+
   //equival calloc
   
   ret->idle_time_diff_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));
@@ -769,7 +770,12 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 
   regex_t regex_var;
   memset(&regex_var, 0, sizeof(regex_t));
-  if(regcomp(&regex_var, string_to_compare, 0) != 0) return;
+
+  if(regcomp(&regex_var, string_to_compare, 0) != 0){
+    closedir(proc_dir);
+    regfree(&regex_var);
+    return;
+  }
   
   int max_y = getmaxy(window);
 
@@ -835,12 +841,21 @@ void find_process(WINDOW* window, int starting_index, char* string_to_compare){
 
 int number_of_regex_matches(char* string_to_compare){ //versione separata
 
+  DIR* proc_dir;
+  
+  if((proc_dir = opendir(PROC_PATH)) == NULL){
+    return 1;
+  }
+
   regex_t regex_var;
   memset(&regex_var, 0, sizeof(regex_t));
 
-  DIR* proc_dir;
-  if((proc_dir = opendir(PROC_PATH)) == NULL) return 0;
-  if(regcomp(&regex_var, string_to_compare, 0) != 0) return 0;
+  if(regcomp(&regex_var, string_to_compare, 0) != 0){
+    closedir(proc_dir);
+    //https://www.ibm.com/docs/en/i/7.3?topic=functions-regfree-free-memory-regular-expression
+    regfree(&regex_var);
+    return 1;
+  } 
 
   dirent* proc_iter;
   FILE* file_cmdline;
@@ -885,6 +900,8 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
   }
 
   closedir(proc_dir);
+  regfree(&regex_var);
+  
   if(count == 0) count = 1; //perché faccio / o % count, quindi è un errore di divisione per zero, da evitare, approssimato ad 1
   return count;
 }
@@ -892,6 +909,8 @@ int number_of_regex_matches(char* string_to_compare){ //versione separata
 void* pid_order_alloc(){
 
   pid_order_t* ret = (pid_order_t *)malloc(sizeof(pid_order_t));
+  //valgrind lo segnala come still reachable poiché non rileva la free a fine funzione, la struttura viene però deallocata correttamente a chiusura programma
+
   ret->ordering_method = ORDERBY_PID_C;
   ret->num_proc = -1;
   ret->max_size = -1;
