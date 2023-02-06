@@ -18,7 +18,7 @@
 #TEST1.2
 #make clean && make && valgrind --leak-check=yes --log-file="./valgrind_output" ./bot
 
-make clean && make && valgrind --leak-check=yes --track-fds=all --log-file="./valgrind_output" ./bot
+#make clean && make && valgrind --leak-check=yes --track-fds=all --log-file="./valgrind_output" ./bot
 
 #TEST2
 #make clean && make && valgrind --leak-check=yes --show-possibly-lost=no --show-leak-kinds=all --log-file="./valgrind_output" ./bot
@@ -27,5 +27,10 @@ make clean && make && valgrind --leak-check=yes --track-fds=all --log-file="./va
 #make clean && make && valgrind --leak-check=yes --show-possibly-lost=yes --show-reachable=yes --log-file="./valgrind_output" ./bot
 
 
+#
+make clean && make && valgrind --leak-check=yes --show-reachable=yes --show-possibly-lost=no --log-file="./valgrind_output" ./bot
+
+#
+#make clean && make && valgrind --leak-check=yes --show-reachable=no --show-possibly-lost=no --log-file="./valgrind_output" ./bot
 
 #Giorgio Paoloni, 1883570

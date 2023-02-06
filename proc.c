@@ -618,11 +618,13 @@ void cpu_snapshot(int time){
 
   fclose(fp);
   free(buffer_line);
+  cpu_snap = NULL;
 
   return;
 }
 
 void* cpu_snapshot_alloc(int time){
+  //idem a cpu_usage, valgrind segnala still reachable, non c'è memleak perché viene liberato a fine programma, ma valgrind non vedendo la free nella funzione segnala
 
   cpu_snapshot_t* ret = (cpu_snapshot_t*) malloc(sizeof(cpu_snapshot_t));
 
@@ -676,7 +678,9 @@ void cpu_snapshot_free(cpu_snapshot_t* struct_ptr){
 void* cpu_usage_alloc(){
 
   cpu_usage_t *ret = (cpu_usage_t*) malloc(sizeof(cpu_usage_t));
-
+  //valgrind segnala still reachable, ma è perché ritorno il puntatore e non rileva la free, che verrà fatta a terminazione del programma
+  //non è un memleak, è un warning
+  
   //equival calloc
   
   ret->idle_time_diff_sec = (double*) malloc((1 + NUM_PROCESSOR) * sizeof(double));

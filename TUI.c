@@ -196,6 +196,7 @@ void TUI_default_interface(){
   // https://stackoverflow.com/questions/32410125/valgrind-shows-memory-leaks-from-ncurses-commands-after-using-appropriate-free
   // https://invisible-island.net/ncurses/ncurses.faq.html#config_leaks (Testing for Memory Leaks)
 
+  //tutti still reachable sono liberati qui
   sem_destroy(&sem1);
   cpu_usage_free(cpu_usage_var);
 
@@ -234,8 +235,8 @@ void TUI_help_interface(){
   wrefresh(window1);
 
   wclear(window3);
-  box(window3, (int) '|', (int) '-');
   mvwprintw(window3, 1, 2, HELP_PRINT);
+  box(window3, (int)'|', (int)'-');
   wrefresh(window3);
 
   int char_input = getch();
@@ -354,13 +355,11 @@ void TUI_easteregg_inferface(){
   wrefresh(window1);
 
   int char_input;
-
   int i ;
 
   while(1){
-
     i = rand() % MAX_TXT;
-  
+
     if(is_term_resized(max_y, max_x)){
       resize_term_custom();
       getmaxyx(stdscr, max_y, max_x);
@@ -376,13 +375,15 @@ void TUI_easteregg_inferface(){
 
     print_easteregg(i);
 
+    if(has_colors_bool) wattroff(window3, COLOR_PAIR(1));
+    box(window3, (int)'|', (int)'-');
+    wrefresh(window3);
+
     char_input = getch();//a getch è bloccante, ma andando a vedere sul man se riceve un segnale timer è come se avessi inserito qualcosa (ERR) e va alla riga successiva di esecuzione, ricordo che c'è un timer che ogni 1s lancia il segnale quindi ogni 1s la getch restituisce ERR se non è inserito niente
-    
 
     if (char_input == (int)'b' || char_input == (int)'B') break;
 
   }
-
 
   if(has_colors_bool) wattroff(window3, COLOR_PAIR(1));
 
@@ -943,6 +944,8 @@ void resize_term_custom(){
 
     print_proc(window3, starting_process, starting_row);
 
+    return;
+
   }else if(current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF ){
     
     wresize(window1, WINDOW1_Y, max_x);
@@ -978,6 +981,8 @@ void resize_term_custom(){
 
     wrefresh(window4);
 
+    return;
+    
   }else if(current_if == EASTEREGG_IF){
 
     wresize(window1, WINDOW1_Y, max_x);
@@ -985,9 +990,11 @@ void resize_term_custom(){
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     wrefresh(window1);
 
-    wresize(window3, max_y - 6, max_x);
+    wresize(window3, max_y - 3, max_x);
     box(window3, (int)'|', (int)'-');
     wrefresh(window3);
+    
+    return;
 
   }else if(current_if == LIST_IF){
     wresize(window1, WINDOW1_Y, max_x);
@@ -1001,6 +1008,8 @@ void resize_term_custom(){
 
     print_proc_advanced(window3, starting_process, starting_row);
 
+    return;
+
   }else if(current_if == STATS_IF){
 
     wresize(window1, WINDOW1_Y, max_x);
@@ -1013,6 +1022,8 @@ void resize_term_custom(){
     wrefresh(window3);
 
     print_stats(window3, starting_process, starting_row);
+
+    return;
 
   }else if(current_if == FIND_IF){
 
@@ -1037,6 +1048,8 @@ void resize_term_custom(){
       mvwprintw(window4, 1, 2, "Ricerca: (Digita il processo o il PID da cercare, invio per terminare la ricerca)");
     }
     wrefresh(window4);
+
+    return;
 
   }else if(current_if == ORDERBY_IF){
     
@@ -1116,18 +1129,30 @@ void resize_term_custom(){
 
     wrefresh(window3);
     wrefresh(window4);
-  
+
+    return;
+
+  }else if(current_if == HELP_IF){
+
+    wresize(window1, WINDOW1_Y, max_x);
+    box(window1, (int)'|', (int)'-');
+    mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
+    wrefresh(window1);
+
+    wresize(window3, max_y - 3, max_x);
+    mvwprintw(window3, 1, 2, HELP_PRINT);
+    box(window3, (int)'|', (int)'-');
+    wrefresh(window3);
+    
+    return;
 
   }
-  //etc...
-
+  return;
 }
 
 void refresh_UI(){
 
   if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return; //schermate statiche
-  //devo differenziare tra le le UI chiamanti
-  //if(current_if == ORDERBY_IF ) return; //temp
   
   wclear(window3);
   box(window3, (int) '|', (int) '-');
@@ -1135,13 +1160,15 @@ void refresh_UI(){
 
   if(current_if == STATS_IF){
     print_stats(window3, starting_process, starting_row);
+    return;
   }else if(current_if == LIST_IF){
     print_proc_advanced(window3, starting_process, starting_row);
+    return;
   }else if(current_if == DEFAULT_IF || current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF){
     print_proc(window3, starting_process, starting_row);
+    return;
   }else if(current_if == FIND_IF){
     //if(strlen(window_input) > 0) window_input[strlen(window_input)] = '\0'; // rimuovo il KEY_RESIZE salvato in windows_input
-
     box(window1, (int)'|', (int)'-');
     mvwprintw(window1, 1, 2, "%s %c", "premi INVIO per terminare la ricerca...", '\0');
     wrefresh(window1);
@@ -1161,9 +1188,8 @@ void refresh_UI(){
       mvwprintw(window4, 1, 2, "%s %c", "Ricerca: (Digita il processo o il PID da cercare, invio per terminare la ricerca)", '\0');
     }
     wrefresh(window4);
-
+    return;
   }else if(current_if == ORDERBY_IF){
-    
 
     box(window1, (int)'|', (int)'-');
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
@@ -1236,11 +1262,9 @@ void refresh_UI(){
         mvwprintw(window3, 6, 2, "%s %c", "Es: c1 <=> ordinamento <crescente> tramite il campo di <cmdline> ", '\0');
       }
     }
-
     wrefresh(window3);
     wrefresh(window4);
-  
-
+    return;
   }
   return;
 }
@@ -1248,14 +1272,13 @@ void refresh_UI(){
 void signal_handler(int sig){
   //TBD
   //stavo leggendo che non è una buona pratica installare un allarme così (a causa del context switch), informati... per ora lo implemento così per vedere se funziona
-
+  
   if(sig == SIGALRM){
     refresh_UI();
     alarm(REFRESH_RATE);
   }else if(sig == SIGWINCH){
     resize_term_custom();
   }
-
   
   //tecnicamente dovrei rilanciarlo solo ogni SIGALRM ma ho paura che i segnali essendo asincroni possano accavallarsi e non venire richiamato
   //es.mi arrivano istantaneamente SIGWINCH e SIGALARM e SIGALARM venisse scartato, non verrebbe richiamato il refresh
@@ -1286,17 +1309,26 @@ void print_easteregg(int i){
   strcat(EE_BOT_full_path, "\0");
   
   FILE *file = NULL;
-  size_t nread = 0;
 
   file = fopen(EE_BOT_full_path, "r");
   if(!file) return;
+  size_t nread = 0;
 
-  while ((nread = fread(buf, 1, sizeof(buf), file)) > 0){
-    mvwprintw(window3, 1, 1, "%s %c", buf, '\0');
-    wrefresh(window3);
+  //grandezze finestra w3
+  /*int max_y, max_x;
+  getmaxyx(stdscr, max_y, max_x);
+  max_y -= 3;
+
+  #define COORD_Y max_y/2
+  #define COORD_X max_x/2*/
+
+  if((nread = fread(buf, 1, sizeof(buf), file)) > 0){
+    //mvwprintw(window3, COORD_Y, COORD_X, "%ld %c", nread, '\0');
+    //mvwprintw(window3, COORD_Y, COORD_X, "bot. %c", '\0');
+    mvwprintw(window3, 1, 1, "%s%c", buf, '\0');
   }
 
   fclose(file);
-
+  return;
 }
 
