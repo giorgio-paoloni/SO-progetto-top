@@ -322,7 +322,6 @@ void TUI_stats_interface(){
   wrefresh(window1);
 
   wclear(window3);
-
   box(window3, (int) '|', (int) '-');
   wrefresh(window3);
 
@@ -883,6 +882,14 @@ void TUI_orderby_interface(){
 }
 
 void resize_term_custom(){ 
+
+  if(window1 == NULL || window3 == NULL || window4 == NULL) return;//le finestre devono esistere
+
+  if(current_if == STATS_IF) return; 
+  //ho bloccato il resize di STATS_IF perché ci sono conflitti con il flusso di esecuzione dei thread e i segnali
+  //non limita le funzionalità del programma, al massimo un po' l'estetica (nb: ancora è disponibile se si torna in altre schermate)
+
+
   //c'è resizeterm, ma viene consigliato in caso di layout complicati di ridimensionare e muovere manualemente, credits. https://invisible-island.net/ncurses/man/resizeterm.3x.html
   //non funziona perfettamente, ma è accettabile
 
@@ -1160,15 +1167,26 @@ void resize_term_custom(){
 void refresh_UI(){
 
   if(current_if == HELP_IF || current_if == EASTEREGG_IF) return; //schermate statiche
+
+  if(current_if == STATS_IF){ 
+    //succedono delle cose misteriose coi thread, devo fare questo controllo
+    //ho scoperto dal man che wresize dealloca la finestra e la rialloca: cambia il puntatore
+    //quindi capita che i thread per qualche motivo comunque eseguono resize al momento sbagliato e si refresha una finestra dellocata
+    //segv ecc...
+    if(window3 != NULL){
+      wclear(window3);
+      box(window3, (int)'|', (int)'-');
+      wrefresh(window3);
+      print_stats(window3, starting_process, starting_row);
+    }
+    return;
+  }
   
   wclear(window3);
   box(window3, (int) '|', (int) '-');
   wrefresh(window3);
 
-  if(current_if == STATS_IF){ 
-    print_stats(window3, starting_process, starting_row);
-    return;
-  }else if(current_if == LIST_IF){
+  if(current_if == LIST_IF){
     print_proc_advanced(window3, starting_process, starting_row);
     return;
   }else if(current_if == DEFAULT_IF || current_if == KILL_IF || current_if == SLEEP_IF || current_if == RESUME_IF){

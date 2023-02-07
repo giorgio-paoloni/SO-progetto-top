@@ -495,7 +495,10 @@ void cpu_usage(){
   
   cpu_snapshot(0);
 
-  if(nanosleep(&sleep_value, NULL) == -1 && ( errno == EINTR || errno == EINVAL)) exit(EXIT_FAILURE); //errore se interrupt o valore non valido
+  if(nanosleep(&sleep_value, NULL) == -1 && ( errno == EINTR || errno == EINVAL)){
+    return;
+    //exit(EXIT_FAILURE); // errore se interrupt o valore non valido
+  }
 
   cpu_snapshot(1);
 
@@ -528,11 +531,11 @@ void* cpu_usage_thread_wrapper(void* arg){
   //i thread effettuano side-effect sulle strutture allocate
 
   //non so se serve realmente bloccare dei segnali...
-  sigset_t set1;
+  /*sigset_t set1;
   sigemptyset(&set1);
   sigaddset(&set1, SIGALRM);
   sigaddset(&set1, SIGWINCH);
-  pthread_sigmask(SIG_SETMASK, &set1, NULL);
+  pthread_sigmask(SIG_SETMASK, &set1, NULL);*/
 
   sem_wait(&sem1);
   cpu_usage(); //CS, 1 solo thread alla volta in writing (producer)
