@@ -328,11 +328,10 @@ void TUI_stats_interface(){
 
   //non amo il do..while 
   int char_input = (int) ' '; //valore a caso... ma diverso da B o b
+  print_stats(window3, 0, 0);
 
   while( !(char_input == (int) 'b' || char_input == (int) 'B') ){
-    print_stats(window3, 0, 0);
-
-    if(sem_getvalue(&sem1, &sem1_val) == -1) exit(EXIT_FAILURE);
+    if(sem_getvalue(&sem1, &sem1_val) == -1) return;
 
     if(sem1_val){ //evito di generare troppi thread se tanto il semaforo è bloccato
       pthread_create(&t1, NULL, cpu_usage_thread_wrapper, NULL);
@@ -450,7 +449,7 @@ void TUI_find_interface(){
       find_process(window3, starting_process, window_input);
       continue;
     }
-    
+
     //qui valgrind segnala degli "Conditional jump or move depends on uninitialised value" per number_of_regex_matches
     //poiché il valore non è ben definito visto che dipende da cosa inserisce l'utente 
 
@@ -933,6 +932,9 @@ void resize_term_custom(){
 
     cpu_snapshot_free(cpu_snapshot_t0);
     cpu_snapshot_free(cpu_snapshot_t1);
+
+    pid_order_free(pid_order_v);
+
     exit(EXIT_FAILURE);
   } 
 
@@ -1022,7 +1024,7 @@ void resize_term_custom(){
     mvwprintw(window1, 1, 2, "%s %c", "(b)back", '\0');
     wrefresh(window1);
 
-    wresize(window3, max_y - 3, max_x);
+    wresize(window3, max_y-3, max_x);
     box(window3, (int)'|', (int)'-');
     wrefresh(window3);
 
@@ -1157,13 +1159,13 @@ void resize_term_custom(){
 
 void refresh_UI(){
 
-  if(current_if == HELP_IF || current_if == EASTEREGG_IF ) return; //schermate statiche
+  if(current_if == HELP_IF || current_if == EASTEREGG_IF) return; //schermate statiche
   
   wclear(window3);
   box(window3, (int) '|', (int) '-');
   wrefresh(window3);
 
-  if(current_if == STATS_IF){
+  if(current_if == STATS_IF){ 
     print_stats(window3, starting_process, starting_row);
     return;
   }else if(current_if == LIST_IF){

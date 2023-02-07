@@ -455,9 +455,7 @@ void print_stats(WINDOW *window, int starting_index, int starting_row){
     percentage_bar(window, ROW_POS1, COL_POS1, cpu_usage_var->cpu_percentage[k]);
     
   }
-
   wrefresh(window);
-
   return;
 }
 
@@ -486,9 +484,7 @@ void percentage_bar(WINDOW *window, int starting_row, int starting_col, double p
   }else{
     mvwprintw(window, starting_row, starting_col, "%s %0.2f%% %c", "[##########]", percentage, '\0');
   }
-
-  wrefresh(window);
-
+  //wrefresh(window);
   return;
 }
 
@@ -512,6 +508,7 @@ void cpu_usage(){
     }else{
       cpu_usage_var->cpu_percentage[k] = (double)0;
     }
+    if(cpu_usage_var->cpu_percentage[k] < 0 ) cpu_usage_var->cpu_percentage[k] = (double) 0;
   }
   
   return;
